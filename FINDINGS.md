@@ -193,7 +193,27 @@ Applied in `PpiCapture.Snapshot` before interpolation. `ppiCalOn: 0` or the live
 
 ## 4. Ideas for better capture, most promising first
 
-*(Ideas 1 and 2 are superseded by section 2.6.)*
+### Next steps (as of 2026-11-16)
+
+Full-frame capture (section 2.6) and the HDR colour decode (`52a7b6a`) work. Open items, most useful first:
+
+1. **Colour tuning on the video plane.** Tone settings (`gamma 0.6`, `black 0`, `alpha 0.5`, `adaptiveGamma 0`)
+   were tuned for the sampler; colours are "good enough" but not tuned. Measure with full-screen patches:
+   `mpv --fs --fs-screen-name=HDMI-A-1 "av://lavfi:color=c=0xRRGGBB:s=1920x1080:r=10"` and read the strip
+   from WLED's WebSocket live view (`{"lv":true}` on `ws://<wled>/ws`) about 2.5 s later. Raw plane values
+   are in telemetry `plane_yuv`. Patch data so far: greys round-trip; red 201/15/0, green 2/208/17,
+   blue 44/22/217, 50% grey 67 (gamma 0.6 on purpose). Consider WLED auto-white mode with saturated colours.
+2. **SDR sources.** All checks so far were the PC's HDMI input in HDR. Check the Jellyfin app (SDR and HDR10)
+   and an SDR HDMI input: whether `hdr=1` decoding is right for them, or whether the plane is always PQ.
+   (Section 2.5: no HDR/SDR detection API found yet; `plane_yuv` white level may serve as the heuristic.)
+3. **DRM-protected content** (Netflix etc.): confirm the stubbed secure path fails cleanly and the app
+   falls back to the sampler (`rc=-4` streak), and hands back to the plane afterwards.
+4. **Render-loop stop** (two unexplained stops on 2026-11-15, sampler era): watch whether it recurs on the plane.
+5. **Docs:** README and `docs/` still describe the S90C as sampler-only.
+6. Performance: ~17-18 fps, capture 4-100 ms (mean ~33 ms). Try a smaller request size (`cw`/`ch` tokens)
+   if latency matters more than detail.
+
+*(Ideas 1 and 2 below are superseded by section 2.6.)*
 
 1. **Hardware-encoder path (`libcapi-rm-video-capture`, `/dev/video30`).** The only full-frame candidate
    that doesn't go through `libvideo-capture`, and its device nodes open for the app. Steps: V4L2
