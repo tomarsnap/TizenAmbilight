@@ -40,7 +40,6 @@ namespace TizenAmbilight
             public double StaleLevel;   // dim factor to fade to (0.35 = 35%)
             // ---- colour handling ----
             public double Saturation;   // chroma expansion about neutral, applied before the matrix
-            public bool Hdr;            // decode the plane as PQ-encoded HDR
             public bool Gamut;          // convert BT.2020 primaries -> BT.709 for the strip
             public int ZoneSample;      // pixel stride when averaging zones (1 = every pixel)
             public bool ZoneHexAll;     // report every zone in zone_sample_hex (audit tool)
@@ -293,7 +292,11 @@ namespace TizenAmbilight
             if (c.Saturation > 4.0) c.Saturation = 4.0;
             // The plane carries PQ-encoded HDR on the reference TV (luma ceiling 148 on two unrelated
             // contents = the PQ code for 203 nits). Set 0 only if your device delivers SDR.
-            c.Hdr = PrefInt("hdr", 1) != 0;
+            // hdr: 0 = SDR, 1 = PQ, 2 = detect from the picture (SignalDetect; default since v6-s90c.4,
+            // because the Jellyfin app delivers SDR as limited-range BT.709 while the PC input is PQ).
+            // range: 0 = detect, 1 = full, 2 = limited.
+            SignalDetect.HdrMode = Math.Max(0, Math.Min(2, PrefInt("hdr", 2)));
+            SignalDetect.RangeMode = Math.Max(0, Math.Min(2, PrefInt("range", 0)));
             // HDR reference white in nits: what maps to full scale. 203 is the BT.2408 diffuse white.
             VideoPlaneCapture.HdrPeakNits = Math.Max(100.0, Math.Min(4000.0, PrefDouble("peak", 203.0)));
             PpiCapture.CalEnabled = PrefInt("ppiCalOn", 1) != 0;

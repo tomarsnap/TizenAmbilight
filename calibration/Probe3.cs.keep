@@ -1,0 +1,261 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+
+namespace TizenAmbilight
+{
+    /// <summary>
+    /// Round 3 device probe (2026-11-16): look for the TV's own SDR/HDR flag. Not part of the app: copy to
+    /// TizenAmbilight/src/Probe3.cs, call <c>Probe3.Start(cfg.Endpoint)</c> after startup and add
+    /// <c>w["watch"] = Probe3.Summary();</c> to the telemetry report.
+    ///
+    /// Read-only. 1) Scans system libraries, binaries, .NET assemblies and /etc for printable strings that
+    /// mention HDR (function names, settings keys, D-Bus names), posted as probe_inventory.txt. 2) Collects
+    /// /sys files whose names look colour/HDMI related. 3) Reads every settings (vconf) key found in step 1.
+    /// Steps 2 and 3 are re-read every 5 s and each change is logged, so playing SDR then HDR shows which
+    /// value follows the content.
+    /// </summary>
+    public static class Probe3
+    {
+        [DllImport("libvconf.so.0")] static extern int vconf_get_int(string key, out int val);
+        [DllImport("libvconf.so.0")] static extern int vconf_get_bool(string key, out int val);
+        [DllImport("libvconf.so.0")] static extern IntPtr vconf_get_str(string key);
+        [DllImport("libc")] static extern void free(IntPtr p);
+        // Signatures from Samsung's own wrapper (Tizen.TV.System.dll, Interop.Avocd): int f(out int).
+        [DllImport("/usr/lib/libavoc.so", CallingConvention = CallingConvention.Cdecl)] static extern int avoc_get_hdr_type(out int type);
+        [DllImport("/usr/lib/libavoc.so", CallingConvention = CallingConvention.Cdecl)] static extern int avoc_get_hdr_status(out int onOff);
+
+        static string Avoc(bool type)
+        {
+            try
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                int v = -99, rc = type ? avoc_get_hdr_type(out v) : avoc_get_hdr_status(out v);
+                long ms = sw.ElapsedMilliseconds;
+                lock (Lock) _avocMs = ms;
+                return "rc" + rc + ":" + v;
+            }
+            catch (Exception e) { return "!" + e.GetType().Name + ":" + e.Message; }
+        }
+        static long _avocMs = -1;
+
+        /// <summary>Round 3a did the full scan (inventory in FINDINGS.md); 3b only uploads the AVOC libraries and watches.</summary>
+        const bool Rescan = false;
+        static readonly object Lock = new object();
+        static readonly List<string> Changes = new List<string>();
+        static readonly Dictionary<string, string> Values = new Dictionary<string, string>();
+        static string _state = "not started";
+        static int _sysCount, _keyCount, _polls;
+
+        public static string Summary()
+        {
+            lock (Lock)
+            {
+                var sb = new StringBuilder(_state + " sys=" + _sysCount + " keys=" + _keyCount + " polls=" + _polls + " changes=" + Changes.Count + " avocMs=" + _avocMs);
+                string t, st, vp;
+                Values.TryGetValue("avoc_hdr_type", out t); Values.TryGetValue("avoc_hdr_status", out st); Values.TryGetValue("db/vp/hdr_format", out vp);
+                sb.Append(" now: type=" + t + " status=" + st + " vp=" + vp);
+                int from = Math.Max(0, Changes.Count - 40);
+                for (int i = from; i < Changes.Count; i++) sb.Append(" | ").Append(Changes[i]);
+                return sb.ToString();
+            }
+        }
+
+        public static void Start(string endpoint)
+        {
+            if (string.IsNullOrEmpty(endpoint)) return;
+            var t = new Thread(() => { try { Run(endpoint); } catch (Exception e) { lock (Lock) _state = "threw " + e.GetType().Name + ": " + e.Message; } });
+            t.IsBackground = true; t.Priority = ThreadPriority.BelowNormal; t.Start();
+        }
+
+        static readonly Regex Interesting = new Regex("hdr|eotf|colorimetry|dynamic_?range|hlg|st2084|smpte2084|bt2020|dolby_?vision|dovi", RegexOptions.IgnoreCase);
+        static readonly Regex KeyRe = new Regex("^(db|memory|memory_init|file)/[A-Za-z0-9_./-]+$");
+
+        static void Run(string endpoint)
+        {
+            Thread.Sleep(10000);
+            foreach (string f in new[] { "/usr/lib/libavoc.so", "/usr/lib/libavoc-managed.so", "/usr/share/dotnet.tizen/framework/Tizen.TV.System.dll",
+                                         "/usr/lib/libep-system-api-picture.so", "/usr/lib/libep-system-api-common.so" })
+            {
+                try { Post(endpoint, "lib__" + Path.GetFileName(f), File.ReadAllBytes(f)); }
+                catch (Exception e) { lock (Lock) Changes.Add("upload " + f + " failed: " + e.Message); }
+            }
+            var sys = new List<string>();
+            var keys = new SortedSet<string> { "db/vp/hdr_format" };
+            if (Rescan) {
+            lock (Lock) _state = "scanning";
+            var inv = new StringBuilder("probe3 " + Ambilight.Version + " " + DateTime.UtcNow.ToString("o") + "\n");
+            long bytes = 0; int files = 0;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            foreach (string f in Files())
+            {
+                List<string> hits;
+                try { hits = Scan(f, ref bytes); } catch { continue; }
+                files++;
+                if (hits.Count == 0) continue;
+                inv.Append("## ").Append(f).Append('\n');
+                foreach (string h in hits)
+                {
+                    inv.Append("  ").Append(h).Append('\n');
+                    foreach (string tok in h.Split(' ', '"', '\'', ',', ';', '='))
+                        if (KeyRe.IsMatch(tok)) keys.Add(tok);
+                }
+                if (inv.Length > 3000000) { inv.Append("TRUNCATED\n"); break; }
+            }
+            inv.Append("scanned ").Append(files).Append(" files, ").Append(bytes >> 20).Append(" MiB in ").Append(sw.ElapsedMilliseconds).Append(" ms\n");
+
+            SysWalk("/sys", 0, sys);
+            inv.Append("## sysfs candidates (").Append(sys.Count).Append(")\n");
+            foreach (string s in sys) inv.Append("  ").Append(s).Append(" = ").Append(ReadSys(s)).Append('\n');
+            inv.Append("## /proc entries\n  ");
+            try { foreach (string d in Directory.GetFileSystemEntries("/proc")) { string b = Path.GetFileName(d); if (!char.IsDigit(b[0])) inv.Append(b).Append(' '); } } catch (Exception e) { inv.Append(e.Message); }
+            inv.Append("\n## vconf keys (").Append(keys.Count).Append(")\n");
+            foreach (string k in keys) inv.Append("  ").Append(k).Append(" = ").Append(ReadKey(k)).Append('\n');
+
+            Post(endpoint, "probe_inventory.txt", Encoding.UTF8.GetBytes(inv.ToString()));
+            }
+            lock (Lock) { _state = "watching"; _sysCount = sys.Count; _keyCount = keys.Count; }
+
+            while (true)
+            {
+                var now = new Dictionary<string, string>();
+                foreach (string s in sys) now[s] = ReadSys(s);
+                foreach (string k in keys) now[k] = ReadKey(k);
+                now["avoc_hdr_type"] = Avoc(true);
+                now["avoc_hdr_status"] = Avoc(false);
+                string ts = DateTime.UtcNow.ToString("HH:mm:ss");
+                lock (Lock)
+                {
+                    _polls++;
+                    foreach (var kv in now)
+                    {
+                        string old;
+                        if (Values.TryGetValue(kv.Key, out old) && old != kv.Value)
+                            Changes.Add(ts + " " + kv.Key + ": " + old + " -> " + kv.Value);
+                        Values[kv.Key] = kv.Value;
+                    }
+                }
+                Thread.Sleep(5000);
+            }
+        }
+
+        static IEnumerable<string> Files()
+        {
+            var roots = new[] { "/usr/lib", "/prd/usr/lib", "/usr/bin", "/prd/usr/bin", "/usr/sbin", "/prd/usr/sbin",
+                                "/usr/share/dotnet.tizen", "/etc", "/prd/etc", "/usr/share/dbus-1", "/usr/apps", "/prd/usr/apps" };
+            var seen = new HashSet<string>();
+            foreach (string r in roots)
+            {
+                var stack = new Stack<KeyValuePair<string, int>>();
+                stack.Push(new KeyValuePair<string, int>(r, 0));
+                while (stack.Count > 0)
+                {
+                    var cur = stack.Pop();
+                    string[] fs = null, ds = null;
+                    try { fs = Directory.GetFiles(cur.Key); } catch { }
+                    try { ds = Directory.GetDirectories(cur.Key); } catch { }
+                    if (fs != null)
+                        foreach (string f in fs)
+                        {
+                            FileInfo fi;
+                            try { fi = new FileInfo(f); if ((fi.Attributes & FileAttributes.ReparsePoint) != 0) continue; } catch { continue; }
+                            if (fi.Length < 16 || fi.Length > 40L * 1024 * 1024) continue;
+                            if (seen.Add(f)) yield return f;
+                        }
+                    if (ds != null && cur.Value < 6)
+                        foreach (string d in ds)
+                        {
+                            try { if ((new DirectoryInfo(d).Attributes & FileAttributes.ReparsePoint) != 0) continue; } catch { continue; }
+                            stack.Push(new KeyValuePair<string, int>(d, cur.Value + 1));
+                        }
+                }
+            }
+        }
+
+        /// <summary>Printable runs (4..160 chars) in the file that match <see cref="Interesting"/>, max 60 per file.</summary>
+        static List<string> Scan(string path, ref long bytes)
+        {
+            var hits = new List<string>();
+            var uniq = new HashSet<string>();
+            byte[] data = File.ReadAllBytes(path);
+            bytes += data.Length;
+            int start = -1;
+            for (int i = 0; i <= data.Length; i++)
+            {
+                bool pr = i < data.Length && data[i] >= 0x20 && data[i] < 0x7f;
+                if (pr) { if (start < 0) start = i; continue; }
+                if (start >= 0)
+                {
+                    int len = i - start;
+                    if (len >= 4)
+                    {
+                        // cheap pre-check before the regex: an 'h'/'H' or 'e'/'E' or 'd'/'D' or 'b'/'B' must occur
+                        string s = Encoding.ASCII.GetString(data, start, Math.Min(len, 160));
+                        if (Interesting.IsMatch(s) && uniq.Add(s)) { hits.Add(s); if (hits.Count >= 60) break; }
+                    }
+                    start = -1;
+                }
+            }
+            return hits;
+        }
+
+        static readonly Regex SysName = new Regex("hdr|eotf|colori|hdmi|infoframe|csc|gamut|dynamic|range|hlg|dolby|video_info|vinfo|signal|timing|format", RegexOptions.IgnoreCase);
+
+        static void SysWalk(string dir, int depth, List<string> outList)
+        {
+            if (depth > 8 || outList.Count > 600) return;
+            string[] fs = null, ds = null;
+            try { fs = Directory.GetFiles(dir); } catch { }
+            try { ds = Directory.GetDirectories(dir); } catch { }
+            if (fs != null) foreach (string f in fs) if (SysName.IsMatch(Path.GetFileName(f)) || SysName.IsMatch(Path.GetFileName(dir))) outList.Add(f);
+            if (ds == null) return;
+            foreach (string d in ds)
+            {
+                string b = Path.GetFileName(d);
+                if (dir == "/sys" && (b == "kernel" || b == "fs" || b == "module" || b == "power" || b == "firmware")) continue;
+                try { if ((new DirectoryInfo(d).Attributes & FileAttributes.ReparsePoint) != 0) continue; } catch { continue; }
+                SysWalk(d, depth + 1, outList);
+            }
+        }
+
+        static string ReadSys(string f)
+        {
+            try
+            {
+                using (var fs = new FileStream(f, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1, false))
+                {
+                    var buf = new byte[512];
+                    int n = fs.Read(buf, 0, buf.Length);
+                    string s = Encoding.ASCII.GetString(buf, 0, Math.Max(0, n)).Trim().Replace("\n", "|");
+                    return s.Length > 200 ? s.Substring(0, 200) : s;
+                }
+            }
+            catch (Exception e) { return "!" + e.GetType().Name; }
+        }
+
+        static string ReadKey(string k)
+        {
+            try
+            {
+                int v;
+                if (vconf_get_int(k, out v) == 0) return "i:" + v;
+                if (vconf_get_bool(k, out v) == 0) return "b:" + v;
+                IntPtr p = vconf_get_str(k);
+                if (p != IntPtr.Zero) { string s = Marshal.PtrToStringAnsi(p); free(p); return "s:" + s; }
+                return "!err";
+            }
+            catch (Exception e) { return "!" + e.GetType().Name; }
+        }
+
+        static void Post(string endpoint, string name, byte[] data)
+        {
+            var d = new Dictionary<string, object> { { "name", name }, { "data", Convert.ToBase64String(data) } };
+            string err = Json.Post(endpoint + "/file", Json.ToJson(d), 60);
+            if (err != null) Ambilight.L("probe3 post " + name + ": " + err);
+        }
+    }
+}

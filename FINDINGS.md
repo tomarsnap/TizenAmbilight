@@ -95,12 +95,36 @@ same dependency on the blocked implementation.
 
 Copies of these binaries (except the impl-sec library) are in `calibration/tv-libs/` (gitignored).
 
-### 2.5 Detecting HDR or SDR input: not found yet
+### 2.5 Detecting HDR/SDR and the signal range: AVOC (solved 2026-11-16)
 
-- `ve_get_color_space_info_status`, `ve_get_pc_mode`, `ve_get_dynamic_brightness_mode` and
-  `ve_get_histo_value` all return `rc=0`, value 0, whether the HDMI input is HDR or SDR.
-- The settings store (vconf) is not reachable as files (`/run/memory` and `/opt/var/kdb` don't exist on
-  Tizen 8; it goes through a system service), so reading it needs `libvconf` and exact key names.
+The plane's encoding depends on the source (measured 2026-11-16):
+
+| Source | Transfer, matrix | Range | Plane black / white |
+|---|---|---|---|
+| PC HDMI, KDE HDR on | PQ, BT.2020 | full | 0 / 148 (203 nits) |
+| Jellyfin app, SDR file | gamma, BT.709 | limited | 16 / 235 |
+| Jellyfin app, HDR10 file | PQ, BT.2020 | limited | 16 / 143 (203 nits) |
+
+**The TV says which, through AVOC** (AV output control, daemon `avocd`, client `/usr/lib/libavoc.so`).
+The app may call it (no privilege error, rc 0, under 1 ms after the first call, about 250 ms):
+
+- `int avoc_get_hdr_type(int *type)`: 0 SDR, 1 HDR10, 2 HLG, 3 HDR10+, 5 CUVA, 6 FreeSync, 7 HDR10+ gaming.
+  Signature and enum from Samsung's wrapper `Interop.Avocd` in `/usr/share/dotnet.tizen/framework/Tizen.TV.System.dll`.
+  It changed from 1 to 0 within one poll when Jellyfin switched from the HDR10 to the SDR file, and read 1
+  on the PC's HDR input.
+- `int avoc_get_hdmi_black_level(int, int *out, int)` (signature from disassembly, called with 0, &v, 0):
+  1 in the Jellyfin app (limited), 2 on the PC input (full). Samsung's menu names these "Low" and "Normal".
+- `avoc_get_pc_mode(int, int *out)`: 0 in Jellyfin, 1 on the PC input (logged, unused).
+  `avoc_get_picture_information` returns two ints (0xC0000 in Jellyfin, 0x80001 on the PC), meaning unknown.
+
+`AvocHdr.cs` polls these every 0.5 s on its own thread; `SignalDetect.cs` uses them and falls back to the
+picture (black at 0 or 16; bright pixels above 0.80 of the range mean SDR) when AVOC is missing.
+
+Dead ends, for the record: the `ve_*` getters (`ve_get_color_space_info_status`, `ve_get_pc_mode`, ...)
+always return 0; the capture call carries no colour metadata; the `sdp` DRM driver's plane and CRTC
+properties (`plane_hw_csc` = 0x10202 and all others) are identical for SDR and HDR10; no HDR-related
+`/sys` files; the settings key `db/vp/hdr_format` (found in `libep-system-api-common.so`) stays 0.
+The firmware string scan that found AVOC is `calibration/Probe3.cs.keep` (27,433 files, 1.3 GiB, 200 s).
 
 ### 2.6 Full-frame capture unblocked: stub `libtzcapturec.so` (2026-11-15)
 
@@ -203,9 +227,9 @@ Full-frame capture (section 2.6) and the HDR colour decode (`52a7b6a`) work. Ope
    from WLED's WebSocket live view (`{"lv":true}` on `ws://<wled>/ws`) about 2.5 s later. Raw plane values
    are in telemetry `plane_yuv`. Patch data so far: greys round-trip; red 201/15/0, green 2/208/17,
    blue 44/22/217, 50% grey 67 (gamma 0.6 on purpose). Consider WLED auto-white mode with saturated colours.
-2. **SDR sources.** All checks so far were the PC's HDMI input in HDR. Check the Jellyfin app (SDR and HDR10)
-   and an SDR HDMI input: whether `hdr=1` decoding is right for them, or whether the plane is always PQ.
-   (Section 2.5: no HDR/SDR detection API found yet; `plane_yuv` white level may serve as the heuristic.)
+2. **SDR sources: done** (v6-s90c.4, section 2.5). The app follows the TV's AVOC HDR type and black level;
+   Jellyfin SDR orange (#ff8000) now decodes to #fe7e01. Still unchecked: HLG content (decoded on the SDR
+   path, a guess) and an SDR HDMI source (PC with HDR off).
 3. **DRM-protected content** (Netflix etc.): confirm the stubbed secure path fails cleanly and the app
    falls back to the sampler (`rc=-4` streak), and hands back to the plane afterwards.
 4. **Render-loop stop** (two unexplained stops on 2026-11-15, sampler era): watch whether it recurs on the plane.
