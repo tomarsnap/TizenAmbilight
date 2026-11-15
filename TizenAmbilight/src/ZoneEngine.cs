@@ -38,8 +38,6 @@ namespace TizenAmbilight
             Array.Copy(o.B, B, Count);
         }
 
-        /// <summary>Exponential moving average, applied per channel:
-        /// smoothed = alpha*raw + (1-alpha)*smoothed. alpha = 1 means "no smoothing".</summary>
         /// <summary>EMA per zone, choosing the alpha per zone: a zone whose colour moved more than
         /// <paramref name="cut"/> (mean absolute channel delta) takes <paramref name="fast"/>.
         /// The rolling sampler refreshes a couple of spots per frame, so a scene cut never moves
@@ -58,6 +56,8 @@ namespace TizenAmbilight
             }
         }
 
+        /// <summary>Exponential moving average, applied per channel:
+        /// smoothed = alpha*raw + (1-alpha)*smoothed. alpha = 1 means "no smoothing".</summary>
         public void SmoothTowards(ZoneColors raw, double alpha)
         {
             double inv = 1.0 - alpha;
