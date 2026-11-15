@@ -57,6 +57,22 @@ namespace TizenAmbilight
                     case "gamma": if (dv >= 0.25 && dv <= 4.0) cfg.Gamma = dv; break;
                     case "sat":   if (dv >= 0.0 && dv <= 4.0) cfg.Saturation = dv; break;
                     case "hdr":  if (dv == 0 || dv == 1 || dv == 2) SignalDetect.HdrMode = (int)dv; break;
+                    case "xr": if (dv >= 0.2 && dv <= 2.0) WledOutput.ChromaR = (float)dv; break;
+                    case "xg": if (dv >= 0.2 && dv <= 2.0) WledOutput.ChromaG = (float)dv; break;
+                    case "xb": if (dv >= 0.2 && dv <= 2.0) WledOutput.ChromaB = (float)dv; break;
+                    case "rgbw": if (dv == 0 || dv == 1) WledOutput.Rgbw = dv != 0; break;
+                    case "wm": if (dv >= 0.0 && dv <= 1.0) WledOutput.WhiteMix = (float)dv; break;
+                    case "wgn": if (dv >= 0.2 && dv <= 4.0) WledOutput.WhiteGain = (float)dv; break;
+                    case "wtr": if (dv >= -1.0 && dv <= 1.0) WledOutput.WhiteTintR = (float)dv; break;
+                    case "wtg": if (dv >= -1.0 && dv <= 1.0) WledOutput.WhiteTintG = (float)dv; break;
+                    case "wtb": if (dv >= -1.0 && dv <= 1.0) WledOutput.WhiteTintB = (float)dv; break;
+                    case "dd": if (dv >= 0.0 && dv <= 1.0) WledOutput.DarkDesat = (float)dv; break;
+                    case "dk": if (dv >= 16.0 && dv <= 255.0) WledOutput.DarkKnee = (float)dv; break;
+                    case "gx": if (dv >= 0.0 && dv <= 1.0) WledOutput.GreenToRed = (float)dv; break;
+                    case "wr": if (dv >= 0.1 && dv <= 4.0) cfg.WhiteR = dv; break;
+                    case "wg": if (dv >= 0.1 && dv <= 4.0) cfg.WhiteG = dv; break;
+                    case "wb": if (dv >= 0.1 && dv <= 4.0) cfg.WhiteB = dv; break;
+                    case "cg": if (dv >= 1.0 && dv <= 3.0) WledOutput.ChromaGamma = dv; break;
                     case "range": if (dv == 0 || dv == 1 || dv == 2) SignalDetect.RangeMode = (int)dv; break;
                     // Capture request size, live. The hardware scaler downsamples to whatever we ask
                     // for, and we only consume 73 zone averages, so a smaller request can cut the

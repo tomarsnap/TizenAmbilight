@@ -630,6 +630,47 @@ namespace DecoderSelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("[16] strip shaping: channel ratios in linear light (chromaGamma)");
+            {
+                var zc = new ZoneColors(1); zc.R[0] = 255; zc.G[0] = 128; zc.B[0] = 0;
+                double prevCg = WledOutput.ChromaGamma; float prevGx = WledOutput.GreenToRed;
+                float pXr = WledOutput.ChromaR, pXg = WledOutput.ChromaG, pXb = WledOutput.ChromaB, pDd = WledOutput.DarkDesat;
+                WledOutput.ChromaR = WledOutput.ChromaG = WledOutput.ChromaB = 1f; WledOutput.DarkDesat = 0f; WledOutput.GreenToRed = 0f;
+                WledOutput.ChromaGamma = 2.2;
+                byte[] pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 1.0, 0, 0, false, 1);
+                Check(pk[2] == 255 && Math.Abs(pk[3] - 56) <= 1 && pk[4] == 0, "#ff8000 -> green at ~22% of red", pk[2] + "," + pk[3] + "," + pk[4]);
+                WledOutput.ChromaGamma = 1.0;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 1.0, 0, 0, false, 1);
+                Check(pk[2] == 255 && pk[3] == 128 && pk[4] == 0, "cg=1 keeps the coded ratio", pk[2] + "," + pk[3] + "," + pk[4]);
+                zc.R[0] = 100; zc.G[0] = 100; zc.B[0] = 100; WledOutput.ChromaGamma = 2.2;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 1.0, 0, 0, false, 1);
+                Check(pk[2] == 100 && pk[3] == 100 && pk[4] == 100, "greys unaffected", pk[2] + "," + pk[3] + "," + pk[4]);
+                zc.R[0] = 0; zc.G[0] = 255; zc.B[0] = 0; WledOutput.GreenToRed = 0.15f;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 1.0, 0, 0, false, 1);
+                Check(pk[2] == 38 && pk[3] == 255 && pk[4] == 0, "green gets 15% red (greenToRed)", pk[2] + "," + pk[3] + "," + pk[4]);
+                // Dark desaturation: brown #804000 keeps its brightness but loses some orange.
+                zc.R[0] = 128; zc.G[0] = 64; zc.B[0] = 0; WledOutput.GreenToRed = 0f;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 0.6, 0, 0, false, 1);
+                int g0 = pk[3], r0b = pk[2];
+                WledOutput.DarkDesat = 0.4f;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 0.6, 0, 0, false, 1);
+                Check(pk[3] > g0 && pk[2] < r0b - 4, "dark brown is desaturated (darkDesat)", pk[2] + "," + pk[3] + "," + pk[4] + " (green was " + g0 + ")");
+                // RGBW: white goes to W with its tint cancelled; a pure colour leaves W at 0.
+                WledOutput.DarkDesat = 0f; WledOutput.Rgbw = true; WledOutput.WhiteMix = 1f; WledOutput.WhiteGain = 1f;
+                WledOutput.WhiteTintR = 0.2f; WledOutput.WhiteTintG = 0f; WledOutput.WhiteTintB = 0.3f;
+                zc.R[0] = 200; zc.G[0] = 200; zc.B[0] = 200;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 1.0, 0, 0, false, 1);
+                Check(pk.Length == 6 && pk[0] == 3 && pk[2] == 0 && pk[3] == 0 && pk[4] == 60 && pk[5] == 200,
+                      "grey 200 -> W 200, blue +60 tint", string.Join(",", pk));
+                zc.R[0] = 255; zc.G[0] = 0; zc.B[0] = 0;
+                pk = WledOutput.BuildDrgbMapped(zc, 1, 1.0, 1.0, 0, 0, false, 1);
+                Check(pk[2] == 255 && pk[5] == 0, "pure red leaves W off", string.Join(",", pk));
+                WledOutput.Rgbw = false;
+                WledOutput.ChromaGamma = prevCg; WledOutput.GreenToRed = prevGx;
+                WledOutput.ChromaR = pXr; WledOutput.ChromaG = pXg; WledOutput.ChromaB = pXb; WledOutput.DarkDesat = pDd;
+            }
+
+            Console.WriteLine();
             Console.WriteLine("==================================================");
             Console.WriteLine("PASSED " + _pass + "   FAILED " + _fail);
             Console.WriteLine("==================================================");

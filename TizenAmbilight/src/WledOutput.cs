@@ -81,16 +81,19 @@ namespace TizenAmbilight
             // array every frame for a packet sent immediately and discarded. Sized EXACTLY rather than
             // ">=": Send() transmits payload.Length bytes, so an oversized buffer would emit extra LEDs.
             // Safe because the render loop sends before the next call and retains nothing.
-            int need = 2 + ledCount * 3;
+            bool rgbw = Rgbw;
+            int bpl = rgbw ? 4 : 3;
+            if (rgbw && ledCount > MaxDrgbwLeds) ledCount = MaxDrgbwLeds;
+            int need = 2 + ledCount * bpl;
             if (_mappedScratch == null || _mappedScratch.Length != need) _mappedScratch = new byte[need];
             byte[] p = _mappedScratch;
-            p[0] = ProtocolDrgb;
+            p[0] = rgbw ? ProtocolDrgbw : ProtocolDrgb;
             p[1] = timeoutSeconds;
 
             int zones = colors.Count;
             for (int led = 0; led < ledCount; led++)
             {
-                int o = 2 + led * 3;
+                int o = 2 + led * bpl;
 
                 // LEDs past the zone count are written EXPLICITLY BLACK rather than left alone.
                 // Leaving them unwritten was the bug: WLED then keeps driving them from its own
@@ -100,6 +103,7 @@ namespace TizenAmbilight
                 if (led >= zones)
                 {
                     p[o] = 0; p[o + 1] = 0; p[o + 2] = 0;
+                    if (rgbw) p[o + 3] = 0;
                     continue;
                 }
 
@@ -117,21 +121,113 @@ namespace TizenAmbilight
                 byte r0 = colors.R[i], g0 = colors.G[i], b0 = colors.B[i];
                 int luma = r0 > g0 ? (r0 > b0 ? r0 : b0) : (g0 > b0 ? g0 : b0);
                 int nl = t[luma];
+                int rr, gg, bb;
                 if (luma <= 0)
                 {
                     // Neutral: no hue to preserve. (luma 0 means the zone is black or near-black.)
-                    p[o] = (byte)nl; p[o + 1] = (byte)nl; p[o + 2] = (byte)nl;
+                    rr = gg = bb = nl;
+                }
+                else if (ChromaGamma != 1.0)
+                {
+                    // Channel ratios to linear light: the zone colour is gamma-coded (SDR, and the HDR
+                    // decode's gamma 2.2 output) but the strip's PWM is linear, so r/max must become
+                    // (r/max)^2.2. Keeping the coded ratio showed #ff8000 with green at 50% of red
+                    // instead of ~22%: pale, shifted toward yellow/white.
+                    float[] rt = RatioLut();
+                    float rl = nl * rt[r0 * 1024 / luma], gl = nl * rt[g0 * 1024 / luma], bl = nl * rt[b0 * 1024 / luma];
+                    // Strip green is a deep ~520 nm emerald; sRGB green sits near 550 nm. Adding a little
+                    // red per unit of CHROMATIC green (above the colour's white part, linear light) pulls
+                    // green toward the screen's hue; greys and white stay neutral. It also softens cyan,
+                    // which matched the S90C's cyan by eye (2026-11-16; limiting it to green standing alone
+                    // made cyan too pure).
+                    float wl = rl < gl ? (rl < bl ? rl : bl) : (gl < bl ? gl : bl);
+                    float cr = (rl - wl) * ChromaR, cgr = (gl - wl) * ChromaG, cb = (bl - wl) * ChromaB;
+                    float fr = wl + cr + GreenToRed * cgr, fg = wl + cgr, fb = wl + cb;
+                    // DARK DESATURATION. On screen a dark orange reads as brown because of the brighter
+                    // picture around it; a lone dim LED has no such context and shows plain orange. Blend
+                    // dark colours toward the grey of equal luminance: fully DarkDesat at black, fading to
+                    // none at DarkKnee (output level).
+                    if (DarkDesat > 0f && nl < DarkKnee)
+                    {
+                        float k = DarkDesat * (1f - nl / DarkKnee);
+                        float y = 0.2126f * fr + 0.7152f * fg + 0.0722f * fb;
+                        fr += k * (y - fr); fg += k * (y - fg); fb += k * (y - fb);
+                    }
+                    rr = (int)(fr + 0.5f);
+                    gg = (int)(fg + 0.5f);
+                    bb = (int)(fb + 0.5f);
                 }
                 else
                 {
                     double k = (double)nl / luma;
-                    int rr = (int)(r0 * k + 0.5), gg = (int)(g0 * k + 0.5), bb = (int)(b0 * k + 0.5);
-                    p[o]     = (byte)(rr > 255 ? 255 : rr);
-                    p[o + 1] = (byte)(gg > 255 ? 255 : gg);
-                    p[o + 2] = (byte)(bb > 255 ? 255 : bb);
+                    rr = (int)(r0 * k + 0.5); gg = (int)(g0 * k + 0.5); bb = (int)(b0 * k + 0.5);
                 }
+                if (rr > 255) rr = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
+                if (rgbw) EmitRgbw(p, o, rr, gg, bb);
+                else { p[o] = (byte)rr; p[o + 1] = (byte)gg; p[o + 2] = (byte)bb; }
             }
             return p;
+        }
+
+        // ---- RGBW output (DRGBW, protocol 3) ----
+        /// <summary>Send 4 bytes per LED and drive the strip's white LED from the app (config <c>wledRgbw</c>,
+        /// token <c>rgbw</c>). Needs WLED's auto-white mode set to "None", otherwise WLED recomputes W.
+        /// Why: with WLED's own auto-white the white part of every colour lands on a warm white LED, so
+        /// pastels and white came out orange on the reference strip (2026-11-16); here the app decides how
+        /// much goes to W and cancels its tint with the RGB LEDs.</summary>
+        public static bool Rgbw = false;
+        public const byte ProtocolDrgbw = 0x03;
+        /// <summary>(1472 - 2) / 4: LEDs in one DRGBW datagram.</summary>
+        public const int MaxDrgbwLeds = 367;
+        /// <summary>Share of the white part moved to the W LED (token <c>wm</c>, config <c>whiteMix</c>).</summary>
+        public static float WhiteMix = 1f;
+        /// <summary>W LED output relative to full RGB white at the same value (token <c>wgn</c>, config
+        /// <c>whiteGain</c>); W is sent as moved/WhiteGain.</summary>
+        public static float WhiteGain = 1f;
+        /// <summary>Tint correction per unit of W, in RGB units: positive red removes red, positive blue
+        /// adds blue (tokens <c>wtr</c>/<c>wtg</c>/<c>wtb</c>, config <c>whiteTintR/G/B</c>). A warm W LED
+        /// needs red &gt; 0 and blue &gt; 0.</summary>
+        public static float WhiteTintR = 0.2f, WhiteTintG = -0.1f, WhiteTintB = 0.8f;
+
+        static void EmitRgbw(byte[] p, int o, int r, int g, int b)
+        {
+            int m = r < g ? (r < b ? r : b) : (g < b ? g : b);
+            float moved = m * WhiteMix;
+            float fr = r - moved - WhiteTintR * moved;
+            float fg = g - moved - WhiteTintG * moved;
+            float fb = b - moved + WhiteTintB * moved;
+            float w = WhiteGain > 0.05f ? moved / WhiteGain : moved;
+            p[o]     = Byte(fr);
+            p[o + 1] = Byte(fg);
+            p[o + 2] = Byte(fb);
+            p[o + 3] = Byte(w);
+        }
+
+        static byte Byte(float v) { return v <= 0f ? (byte)0 : v >= 255f ? (byte)255 : (byte)(v + 0.5f); }
+
+        /// <summary>Exponent applied to each channel's ratio to the brightest channel (config/token
+        /// <c>chromaGamma</c> / <c>cg</c>). 1 keeps the gamma-coded ratios (pre-v6-s90c.5 behaviour);
+        /// 2.2 converts them to linear light for the strip.</summary>
+        public static double ChromaGamma = 2.2;
+        /// <summary>Red added per unit of green, in linear light (config <c>greenToRed</c>, token <c>gx</c>).
+        /// Only applies with <see cref="ChromaGamma"/> != 1.</summary>
+        public static float GreenToRed = 0.25f;
+        /// <summary>Gains on each channel's CHROMATIC part (above the colour's white part, linear light):
+        /// tokens <c>xr</c>/<c>xg</c>/<c>xb</c>, config <c>chromaGainR/G/B</c>. Unlike white balance they
+        /// leave greys and white untouched; they correct the strip primaries' relative strength in mixes
+        /// (yellow too green -> lower xg; cyan too blue -> lower xb).</summary>
+        public static float ChromaR = 1f, ChromaG = 0.9f, ChromaB = 0.75f;
+        /// <summary>Saturation removed at black (token <c>dd</c>, config <c>darkDesat</c>), fading linearly to
+        /// none at output level <see cref="DarkKnee"/> (token <c>dk</c>, config <c>darkKnee</c>).</summary>
+        public static float DarkDesat = 0.4f, DarkKnee = 160f;
+        static float[] _ratioLut; static double _ratioLutG = double.NaN;
+        static float[] RatioLut()
+        {
+            if (_ratioLut != null && _ratioLutG == ChromaGamma) return _ratioLut;
+            var t = new float[1025];
+            for (int i = 0; i <= 1024; i++) t[i] = (float)Math.Pow(i / 1024.0, ChromaGamma);
+            _ratioLut = t; _ratioLutG = ChromaGamma;
+            return t;
         }
 
         // ---- brightness shaping ----

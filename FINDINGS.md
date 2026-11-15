@@ -174,6 +174,24 @@ Consequences:
 - A textbook HDR decode (PQ → BT.2020 → 709) fixed the primaries on HDMI-HDR but crushed midtones and
   tinted whites cyan. **An empirical fit beat the standard maths.**
 
+### 3.1 Strip colour stage (2026-11-16, tuned by eye)
+
+Decoding gives the screen's RGB; the strip still needs its own correction, which never existed before.
+It runs last (`WledOutput.BuildDrgbMapped`), in linear light, and applies to both capture paths:
+
+| Problem seen on the strip | Cause | Setting |
+|---|---|---|
+| Mixed colours pale, toward yellow/white | gamma-coded channel ratios sent to linear PWM | `chromaGamma 2.2` |
+| Green too green (emerald) | strip green ~520 nm vs sRGB ~550 nm | `greenToRed 0.25` |
+| Yellow too green, cyan too blue, orange too saturated | strip primaries' relative strength | `chromaGain 1/0.9/0.75` |
+| Dark brown reads orange | no surround on a lone LED | `darkDesat 0.4@160` |
+| White and pastels orange | warm white LED (WLED auto-white "Brighter", then "Accurate") | `wledRgbw 1`, WLED auto-white **None**, `whiteTint 0.2/-0.1/0.8` |
+
+Method: `calibration/mkcard.py` test cards on the PC input (HDR off for SDR), the stale fade off
+(`stale=0`, or still cards dim and look wrong), and `calibration/knobs.py` sliders for live tokens.
+WLED's own auto-white was 1 (Brighter) before 2026-11-16 and is now 0 (None); set it back to 1 if
+`wledRgbw` is turned off, or whites lose the white LED.
+
 ### Calibration model in use
 
 Root-polynomial colour correction (Finlayson et al.). Features on white-normalised input:
@@ -221,15 +239,12 @@ Applied in `PpiCapture.Snapshot` before interpolation. `ppiCalOn: 0` or the live
 
 Full-frame capture (section 2.6) and the HDR colour decode (`52a7b6a`) work. Open items, most useful first:
 
-1. **Colour tuning on the video plane.** Tone settings (`gamma 0.6`, `black 0`, `alpha 0.5`, `adaptiveGamma 0`)
-   were tuned for the sampler; colours are "good enough" but not tuned. Measure with full-screen patches:
-   `mpv --fs --fs-screen-name=HDMI-A-1 "av://lavfi:color=c=0xRRGGBB:s=1920x1080:r=10"` and read the strip
-   from WLED's WebSocket live view (`{"lv":true}` on `ws://<wled>/ws`) about 2.5 s later. Raw plane values
-   are in telemetry `plane_yuv`. Patch data so far: greys round-trip; red 201/15/0, green 2/208/17,
-   blue 44/22/217, 50% grey 67 (gamma 0.6 on purpose). Consider WLED auto-white mode with saturated colours.
+1. **Strip colour: tuned by eye 2026-11-16** (v6-s90c.5, section 3.1). Left: re-check HDR content with
+   the new strip stage, and tune `gamma`/`whiteGain` for overall brightness on real video.
 2. **SDR sources: done** (v6-s90c.4, section 2.5). The app follows the TV's AVOC HDR type and black level;
    Jellyfin SDR orange (#ff8000) now decodes to #fe7e01. Still unchecked: HLG content (decoded on the SDR
-   path, a guess) and an SDR HDMI source (PC with HDR off).
+   path, a guess). An SDR HDMI source (PC with HDR off) checked 2026-11-16: AVOC type 0, black level 2
+   (full), #804000 decoded as #864200.
 3. **DRM-protected content** (Netflix etc.): confirm the stubbed secure path fails cleanly and the app
    falls back to the sampler (`rc=-4` streak), and hands back to the plane afterwards.
 4. **Render-loop stop** (two unexplained stops on 2026-11-15, sampler era): watch whether it recurs on the plane.

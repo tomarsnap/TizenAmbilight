@@ -297,6 +297,21 @@ namespace TizenAmbilight
             // range: 0 = detect, 1 = full, 2 = limited.
             SignalDetect.HdrMode = Math.Max(0, Math.Min(2, PrefInt("hdr", 2)));
             SignalDetect.RangeMode = Math.Max(0, Math.Min(2, PrefInt("range", 0)));
+            // Channel ratios to linear light for the strip (WledOutput.ChromaGamma); 1 = old behaviour.
+            WledOutput.ChromaGamma = Math.Max(1.0, Math.Min(3.0, PrefDouble("chromaGamma", 2.2)));
+            WledOutput.GreenToRed = (float)Math.Max(0.0, Math.Min(1.0, PrefDouble("greenToRed", 0.25)));
+            // RGBW strips: drive the white LED from the app (DRGBW). Set WLED's auto-white mode to None.
+            WledOutput.Rgbw = PrefInt("wledRgbw", 0) != 0;
+            WledOutput.WhiteMix = (float)Math.Max(0.0, Math.Min(1.0, PrefDouble("whiteMix", 1.0)));
+            WledOutput.WhiteGain = (float)Math.Max(0.2, Math.Min(4.0, PrefDouble("whiteGain", 1.0)));
+            WledOutput.WhiteTintR = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("whiteTintR", 0.2)));
+            WledOutput.WhiteTintG = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("whiteTintG", -0.1)));
+            WledOutput.WhiteTintB = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("whiteTintB", 0.8)));
+            WledOutput.DarkDesat = (float)Math.Max(0.0, Math.Min(1.0, PrefDouble("darkDesat", 0.4)));
+            WledOutput.DarkKnee = (float)Math.Max(16.0, Math.Min(255.0, PrefDouble("darkKnee", 160)));
+            WledOutput.ChromaR = (float)Math.Max(0.2, Math.Min(2.0, PrefDouble("chromaGainR", 1.0)));
+            WledOutput.ChromaG = (float)Math.Max(0.2, Math.Min(2.0, PrefDouble("chromaGainG", 0.9)));
+            WledOutput.ChromaB = (float)Math.Max(0.2, Math.Min(2.0, PrefDouble("chromaGainB", 0.75)));
             // HDR reference white in nits: what maps to full scale. 203 is the BT.2408 diffuse white.
             VideoPlaneCapture.HdrPeakNits = Math.Max(100.0, Math.Min(4000.0, PrefDouble("peak", 203.0)));
             PpiCapture.CalEnabled = PrefInt("ppiCalOn", 1) != 0;

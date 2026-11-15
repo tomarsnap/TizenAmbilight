@@ -213,7 +213,10 @@ namespace TizenAmbilight
             w["decode"] = "hdr=" + SignalDetect.HdrMode + " gamut=" + cfg.Gamut + " zoneSample=" + cfg.ZoneSample +
                           " peak=" + VideoPlaneCapture.HdrPeakNits + " targetFps=" + cfg.TargetFps;
             w["tuning"] = "alpha=" + cfg.Alpha + " gain=" + cfg.Gain + " gamma=" + cfg.Gamma +
-                          " saturation=" + cfg.Saturation + " white=" + cfg.WhiteR + "/" + cfg.WhiteG +
+                          " saturation=" + cfg.Saturation + " chromaGamma=" + WledOutput.ChromaGamma + " greenToRed=" + WledOutput.GreenToRed + " chromaGain=" + WledOutput.ChromaR + "/" + WledOutput.ChromaG + "/" + WledOutput.ChromaB +
+                          " darkDesat=" + WledOutput.DarkDesat + "@" + WledOutput.DarkKnee +
+                          " rgbw=" + (WledOutput.Rgbw ? "on mix=" + WledOutput.WhiteMix + " wgain=" + WledOutput.WhiteGain +
+                                      " tint=" + WledOutput.WhiteTintR + "/" + WledOutput.WhiteTintG + "/" + WledOutput.WhiteTintB : "off") + " white=" + cfg.WhiteR + "/" + cfg.WhiteG +
                           "/" + cfg.WhiteB;
             // Report the EFFECTIVE gamma - with the adaptive curve on, cfg.Gamma is only the manual
             // fallback and quoting it here made the telemetry disagree with what is actually applied.

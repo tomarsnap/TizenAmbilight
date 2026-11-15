@@ -68,7 +68,16 @@ then copy the values into `config.json`.
 | `gain` | `1.0` | straight multiplier. Above 1 it clips; prefer `gamma`. |
 | `black` | `12` | black crush: zone levels at or below this go to 0 |
 | `saturation` | `1.0` | chroma scale; preserves hue |
-| `whiteR` / `whiteG` / `whiteB` | `1` / `1` / `1` | per-channel white balance |
+| `whiteR` / `whiteG` / `whiteB` | `1` / `1` / `1` | per-channel white balance (gamma-coded, tints greys too) |
+| **Strip colour** (last step before WLED, linear light) | | |
+| `chromaGamma` | `2.2` | each channel's ratio to the brightest is raised to this power, so gamma-coded ratios become linear for the strip's PWM. `1` = pre-v6-s90c.5 behaviour |
+| `greenToRed` | `0.25` | red added per unit of chromatic green: strip green (~520 nm) is bluer than sRGB green |
+| `chromaGainR` / `G` / `B` | `1` / `0.9` / `0.75` | gains on each channel's chromatic part only (greys untouched): yellow too green → lower G, cyan too blue → lower B |
+| `darkDesat` / `darkKnee` | `0.4` / `160` | saturation removed at black, fading to none at that output level (a lone dim LED shows dark brown as orange) |
+| `wledRgbw` | `0` | `1` = send DRGBW (4 bytes per LED, max 367) and drive an RGBW strip's white LED from the app. **Set WLED's auto-white mode to None**, or WLED recomputes W |
+| `whiteMix` | `1` | share of each colour's white part moved to the white LED |
+| `whiteGain` | `1` | white LED output relative to full RGB white (W is sent as moved / whiteGain) |
+| `whiteTintR` / `G` / `B` | `0.2` / `-0.1` / `0.8` | per unit of W: red removed, green removed (negative adds), blue added; cancels a warm white LED |
 | **Motion** | | |
 | `alpha` | `0.25` | EMA smoothing for small changes (lower = smoother) |
 | `alphaFast` / `alphaCut` | `0.75` / `18` | faster smoothing used when the frame delta exceeds `alphaCut` (scene cuts) |
@@ -129,6 +138,10 @@ string-valued token is dropped silently. NaN and Infinity are rejected explicitl
 | `gamma` / `gain` / `black` | 1–4 / 0.1–8 / 0–200 | tone curve |
 | `ag` / `gmin` / `gmax` / `atau` | 0/1 / 0.5–3 / 0.5–4 / 0.2–60 | adaptive gamma |
 | `sat` / `hdr` / `range` / `gamut` / `peak` | 0–4 / 0–2 / 0–2 / 0/1 / 100–4000 | colour |
+| `wr` / `wg` / `wb` | 0.1–4 each | `whiteR` / `whiteG` / `whiteB` |
+| `cg` / `gx` / `xr` / `xg` / `xb` | 1–3 / 0–1 / 0.2–2 each | `chromaGamma` / `greenToRed` / `chromaGainR/G/B` |
+| `dd` / `dk` | 0–1 / 16–255 | `darkDesat` / `darkKnee` |
+| `rgbw` / `wm` / `wgn` / `wtr` / `wtg` / `wtb` | 0/1 / 0–1 / 0.2–4 / −1–1 each | `wledRgbw` / `whiteMix` / `whiteGain` / `whiteTintR/G/B` |
 | `spatial` / `punch` / `floor` | 0–1 / 0–1 / 0–255 | ambience |
 | `stale` / `stalevel` | 0–600000 ms / 0–1 | stale-picture fade |
 | `bars` / `brows` / `bthr` | 0/1 / 0/1 / 4–80 | black-bar detection |
