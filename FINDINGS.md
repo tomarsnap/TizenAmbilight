@@ -5,8 +5,9 @@ Samsung S90C (Tizen 8.0), on 2026-10-25. Upstream supports only a 2025 S84F (Tiz
 what works, what is blocked and why, the measurements behind the colour calibration, and the open leads
 for better capture.
 
-**Status:** working, using the TV's built-in colour measurement ("Hue Sync" API, `ve_*`), 12 spots,
-calibrated for the TV's own Jellyfin app (SDR and HDR10). Full-frame capture is blocked by firmware.
+**Status (2026-11-15):** **full-frame video-plane capture works** (960×540 NV12, ≈33 ms per capture, ≈17 fps
+end to end) once the app loads a stub `libtzcapturec.so` before the capture library; see section 2.6.
+The TV's colour measurement ("Hue Sync" API, `ve_*`, section 2.3) remains the fallback for DRM-protected video.
 
 ---
 
@@ -101,6 +102,29 @@ Copies of these binaries (except the impl-sec library) are in `calibration/tv-li
 - The settings store (vconf) is not reachable as files (`/run/memory` and `/opt/var/kdb` don't exist on
   Tizen 8; it goes through a system service), so reading it needs `libvconf` and exact key names.
 
+### 2.6 Full-frame capture unblocked: stub `libtzcapturec.so` (2026-11-15)
+
+Found with `calibration/Probe.cs.keep` (read-only device probe, two rounds on the TV).
+
+- Disassembling `libvideo-capture-impl-sec.so.0.1.0` (pulled by the probe) shows the normal capture is
+  plain DRM ioctls on **`/dev/dri/card1`** (which the app may open): `DRM_IOCTL_SDP_GEM_CREATE_CAPTURE`
+  (`0xc0306444`, Y and C buffers) → `MAP_DUMB` → `mmap` → `DRM_IOCTL_SDP_HW_CAPTURE` (`0xc0886452`) /
+  `GET_LAST_CAPTURED_DATA` (`0xc0886464`). `TZCAPTURE_*` is called **only** from `scaler_capture_secure`,
+  the protected-content branch.
+- So `libtzcapturec.so` is needed only to satisfy `DT_NEEDED`. The dynamic linker accepts an already-loaded
+  object with the same soname, so the app `dlopen`s `res/libtzcapturec.so` (a 1.6 KB stub whose functions
+  return -1, built from `TizenAmbilight/native/`) with `RTLD_GLOBAL`, then `/prd/usr/lib/libvideo-capture-impl-sec.so`.
+  Its constructor injects the implementation into `libvideo-capture`, and `secvideo_api_capture_video_main`
+  returns `rc=0`. Every other dependency of impl-sec (including `libteec.so`) loads from the system.
+- The stub must be **ARM EABI5 soft-float** like the TV's libraries (`readelf -h`).
+- Checked on YouTube over the PC's HDMI input (HDR): real frames, 40/40 captures `rc=0`, 4–100 ms each.
+  Protected content is expected to fail in the secure branch and fall back to the sampler (`rc=-4` path):
+  not yet observed.
+- Round-1 inventory, for reference: `/dev/video30–33` are `sdp-hen` H.264 encoders (no raw output,
+  `rm_video_capture_is_supported()` = false); `/dev/dri/card0` is the display (`sdp` DRM, plane 70 = video
+  plane at 3840×2160, `GetFB` hands out GEM handles for the graphics planes); no writeback connector, atomic
+  refused. Not needed any more.
+
 ---
 
 ## 3. What the measurement API reports (important for calibration)
@@ -168,6 +192,8 @@ Applied in `PpiCapture.Snapshot` before interpolation. `ppiCalOn: 0` or the live
 ---
 
 ## 4. Ideas for better capture, most promising first
+
+*(Ideas 1 and 2 are superseded by section 2.6.)*
 
 1. **Hardware-encoder path (`libcapi-rm-video-capture`, `/dev/video30`).** The only full-frame candidate
    that doesn't go through `libvideo-capture`, and its device nodes open for the app. Steps: V4L2

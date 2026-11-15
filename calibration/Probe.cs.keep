@@ -1,0 +1,446 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+
+namespace TizenAmbilight
+{
+    /// <summary>
+    /// One-shot, read-only capture-path probe (FINDINGS.md section 4, ideas 1 and 2). Not part of the app:
+    /// copy to TizenAmbilight/src/Probe.cs and call <c>Probe.Start(cfg.Endpoint);</c> in Program.cs before
+    /// "resolve the capture library". Results go to calibration/diag-receiver.py as probe_report.txt.
+    ///
+    /// Only query ioctls are issued (QUERYCAP, ENUM_FMT, G_FMT, ENUMINPUT, G_INPUT, QUERYCTRL, DRM getters).
+    /// Nothing allocates buffers, starts a stream or sets a plane, so the scaler-wedge risk (AGENTS Pitfall 1)
+    /// does not apply. Why each part:
+    /// - V4L2: libcapi-rm-video-capture drives the hardware encoder on /dev/video30 with OUTPUT-queue
+    ///   (type 2) G_FMT/S_FMT/S_PARM, a private control 0x00A20064 (bitrate) and a private event 0x08000001
+    ///   whose payload is two u32 below 1 MiB. It never reads a bitstream itself, so the reader lives
+    ///   elsewhere; the node's formats and controls say whether it can give us raw or encoded screen frames.
+    /// - DRM: the same library puts an XR24 framebuffer on a DRM plane "to encode", which suggests the encoder
+    ///   reads the display path. A writeback connector or a readable plane framebuffer would be a capture route.
+    /// - impl-sec: the full-frame library that fails on libtzcapturec; its disassembly shows what TrustZone is for.
+    /// </summary>
+    public static class Probe
+    {
+        const int O_RDWR = 2, O_NONBLOCK = 0x800, O_CLOEXEC = 0x80000;
+        [DllImport("libc", SetLastError = true)] static extern int open(string path, int flags);
+        [DllImport("libc")] static extern int close(int fd);
+        [DllImport("libc", SetLastError = true)] static extern int ioctl(int fd, uint req, byte[] arg);
+
+        [DllImport("libdl.so.2")] static extern IntPtr dlopen(string f, int flags);
+        [DllImport("libdl.so.2")] static extern IntPtr dlsym(IntPtr h, string s);
+        [DllImport("libdl.so.2")] static extern IntPtr dlerror();
+
+        const string Drm = "libdrm.so.2";
+        [DllImport(Drm)] static extern IntPtr drmGetVersion(int fd);
+        [DllImport(Drm)] static extern int drmSetClientCap(int fd, ulong cap, ulong value);
+        [DllImport(Drm)] static extern int drmGetCap(int fd, ulong cap, out ulong value);
+        [DllImport(Drm)] static extern IntPtr drmModeGetResources(int fd);
+        [DllImport(Drm)] static extern IntPtr drmModeGetPlaneResources(int fd);
+        [DllImport(Drm)] static extern IntPtr drmModeGetPlane(int fd, uint id);
+        [DllImport(Drm)] static extern IntPtr drmModeGetCrtc(int fd, uint id);
+        [DllImport(Drm)] static extern IntPtr drmModeGetConnector(int fd, uint id);
+        [DllImport(Drm)] static extern IntPtr drmModeGetEncoder(int fd, uint id);
+        [DllImport(Drm)] static extern IntPtr drmModeGetFB(int fd, uint id);
+        [DllImport(Drm)] static extern IntPtr drmModeObjectGetProperties(int fd, uint id, uint type);
+        [DllImport(Drm)] static extern IntPtr drmModeGetProperty(int fd, uint id);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate byte BoolFn();
+
+        const uint QUERYCAP = 0x80685600, ENUM_FMT = 0xc0405602, G_FMT = 0xc0cc5604, ENUMINPUT = 0xc050561a,
+                   G_INPUT = 0x80045626, QUERYCTRL = 0xc0445624;
+        const uint CtrlNext = 0x80000000;
+
+        static readonly List<string> Out = new List<string>();
+        static void W(string s) { Out.Add(s); }
+
+        public static void Start(string endpoint)
+        {
+            if (string.IsNullOrEmpty(endpoint)) { Ambilight.L("probe: no probeEndpoint, skipped"); return; }
+            var t = new Thread(() =>
+            {
+                try { Thread.Sleep(15000); Run(endpoint); }
+                catch (Exception e) { Ambilight.L("probe threw " + e); }
+            });
+            t.IsBackground = true;
+            t.Start();
+        }
+
+        /// <summary>Round 1 (device inventory) is done; its results are in FINDINGS.md. Round 2 tests the stub preload.</summary>
+        const bool Round1 = false;
+
+        static void Run(string endpoint)
+        {
+            W("probe " + Ambilight.Version + " " + DateTime.UtcNow.ToString("o") + " ptr=" + IntPtr.Size);
+            lock (Pre) Out.AddRange(Pre);
+            if (Round1)
+            {
+                Section("sysfs", Sysfs);
+                Section("v4l2", V4l2All);
+                Section("drm", DrmAll);
+                Section("rm-video-capture", RmSupported);
+                Section("libs", ListLibs);
+            }
+            Section("plane-capture", () => PlaneTest(endpoint));
+            Post(endpoint, "probe_report.txt", Encoding.UTF8.GetBytes(string.Join("\n", Out) + "\n"));
+            Ambilight.L("probe: " + Out.Count + " lines posted");
+            Ambilight.L("probe: done");
+        }
+
+        // ---- round 2: load the stock full-frame implementation with stub TrustZone libraries ----
+
+        static readonly List<string> Pre = new List<string>();
+
+        /// <summary>DT_NEEDED of libvideo-capture-impl-sec.so.0.1.0 (S90C, T-PTMCDEUC 2025-06), minus libc & co.</summary>
+        static readonly string[] ImplNeeded = {
+            "libtzcapturec.so", "libteec.so", "libdrm-util.so.0", "libfconfig.so", "liblwipc.so", "libtdm-client.so.0",
+            "libtbm.so.1", "libelementary.so.1", "libopencv_core.so.407", "libopencv_imgproc.so.407", "libopencv_dnn.so.407",
+            "libopencv_face.so.407", "libturbojpeg.so.0", "libpng16.so.16", "libcapi-system-info.so.0" };
+
+        /// <summary>Synchronous; call before VideoPlaneCapture.Init so libvideo-capture finds the implementation
+        /// already injected. Any library the app may not open is replaced by the stub of the same soname in res/.</summary>
+        public static void Preload()
+        {
+            const int RTLD_LAZY = 1, RTLD_NOW = 2, RTLD_GLOBAL = 0x100;
+            string res = null;
+            try { res = Tizen.Applications.Application.Current?.DirectoryInfo?.Resource; } catch { }
+            if (string.IsNullOrEmpty(res)) res = Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? "", "..", "res");
+            Action<string> P = s => { lock (Pre) Pre.Add(s); Ambilight.L("probe preload: " + s); };
+            P("==== preload res=" + res);
+            try
+            {
+                int c1 = open("/dev/dri/card1", O_RDWR | O_CLOEXEC);
+                P("/dev/dri/card1 open " + (c1 >= 0 ? "ok" : "errno " + Marshal.GetLastWin32Error()));
+                if (c1 >= 0) close(c1);
+                foreach (string lib in ImplNeeded)
+                {
+                    dlerror();
+                    IntPtr h = dlopen(lib, RTLD_LAZY | RTLD_GLOBAL);
+                    string err = h == IntPtr.Zero ? Err() : null;
+                    P(lib + ": " + (h != IntPtr.Zero ? "system ok" : err));
+                    if (h != IntPtr.Zero) continue;
+                    string stub = Path.Combine(res, lib);
+                    if (!File.Exists(stub)) { P("  no stub " + stub); continue; }
+                    dlerror();
+                    h = dlopen(stub, RTLD_NOW | RTLD_GLOBAL);
+                    P("  stub " + (h != IntPtr.Zero ? "loaded" : Err()));
+                }
+                dlerror();
+                IntPtr impl = dlopen("/prd/usr/lib/libvideo-capture-impl-sec.so", RTLD_NOW | RTLD_GLOBAL);
+                P("impl-sec: " + (impl != IntPtr.Zero ? "LOADED" : Err()));
+            }
+            catch (Exception e) { P("preload threw " + e.GetType().Name + ": " + e.Message); }
+        }
+
+        static string Err() { IntPtr m = dlerror(); return m == IntPtr.Zero ? "?" : Marshal.PtrToStringAnsi(m); }
+
+        static void PlaneTest(string endpoint)
+        {
+            string e = VideoPlaneCapture.Init();
+            W("VideoPlaneCapture.Init: " + (e ?? "ok") + " path=" + VideoPlaneCapture.ResolvedPath);
+            if (e != null) return;
+            int posted = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                VideoPlaneResult r = VideoPlaneCapture.Capture();
+                string line = "cap" + i + " rc=" + r.Rc + " " + r.RetWidth + "x" + r.RetHeight + " pitch " + r.YPitch + "/" + r.CPitch +
+                              " " + r.CaptureMs.ToString("0.0") + "ms" + (r.Error != null ? " err=" + r.Error : "");
+                if (r.Rc == 0 && r.Y != null)
+                {
+                    line += " medY=" + VideoPlaneCapture.MedianLuma(r.Y, r.RetWidth > 0 ? r.RetWidth : VideoPlaneCapture.PlaneW, r.RetHeight > 0 ? r.RetHeight : VideoPlaneCapture.PlaneH);
+                    if (posted < 2 && (i == 5 || i == 30))
+                    {
+                        Post(endpoint, "plane" + i + "_Y.raw", (byte[])r.Y.Clone());
+                        if (r.C != null) Post(endpoint, "plane" + i + "_C.raw", (byte[])r.C.Clone());
+                        posted++;
+                    }
+                }
+                W(line);
+                Thread.Sleep(i < 10 ? 100 : 20);
+            }
+            W("colour format: " + VideoPlaneCapture.ColorFormatVerdict + " chosen=" + VideoPlaneCapture.ChosenColorFormat);
+        }
+
+        static void Section(string name, Action a)
+        {
+            W("==== " + name);
+            try { a(); } catch (Exception e) { W(name + " threw " + e.GetType().Name + ": " + e.Message); }
+        }
+
+        // ---- sysfs: names without opening anything ----
+        static void Sysfs()
+        {
+            foreach (string root in new[] { "/sys/class/video4linux", "/sys/class/drm" })
+            {
+                string[] ents;
+                try { ents = Directory.GetFileSystemEntries(root); }
+                catch (Exception e) { W(root + ": " + e.Message); continue; }
+                Array.Sort(ents);
+                foreach (string d in ents)
+                {
+                    var sb = new StringBuilder(d);
+                    foreach (string f in new[] { "name", "index", "status", "enabled", "modes", "dpms" })
+                    {
+                        try { string v = File.ReadAllText(Path.Combine(d, f)).Trim().Replace("\n", "|"); if (v.Length > 0) sb.Append(" " + f + "=" + v); }
+                        catch { }
+                    }
+                    W(sb.ToString());
+                }
+            }
+        }
+
+        // ---- V4L2 ----
+        static void V4l2All()
+        {
+            var nodes = new List<string>();
+            try { foreach (string d in Directory.GetFiles("/dev")) if (Path.GetFileName(d).StartsWith("video")) nodes.Add(d); }
+            catch (Exception e) { W("ls /dev: " + e.Message); }
+            nodes.Sort((a, b) => Num(a).CompareTo(Num(b)));
+            foreach (string n in nodes) V4l2Node(n);
+        }
+
+        static int Num(string p) { int v; int.TryParse(Path.GetFileName(p).Substring(5), out v); return v; }
+
+        static void V4l2Node(string path)
+        {
+            int fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+            if (fd < 0) { W(path + " open errno " + Marshal.GetLastWin32Error()); return; }
+            try
+            {
+                var cap = new byte[104];
+                if (ioctl(fd, QUERYCAP, cap) < 0) { W(path + " QUERYCAP errno " + Marshal.GetLastWin32Error()); return; }
+                uint caps = U32(cap, 84), dcaps = U32(cap, 88);
+                W(path + " driver=" + Str(cap, 0, 16) + " card=" + Str(cap, 16, 32) + " bus=" + Str(cap, 48, 32) +
+                  " ver=0x" + U32(cap, 80).ToString("x") + " caps=0x" + caps.ToString("x8") + " dcaps=0x" + dcaps.ToString("x8") +
+                  " [" + CapNames(dcaps != 0 ? dcaps : caps) + "]");
+                foreach (uint type in new uint[] { 1, 2, 9, 10 })
+                {
+                    var fmts = new List<string>();
+                    for (uint i = 0; i < 64; i++)
+                    {
+                        var d = new byte[64];
+                        Put(d, 0, i); Put(d, 4, type);
+                        if (ioctl(fd, ENUM_FMT, d) < 0) break;
+                        fmts.Add(FourCC(U32(d, 44)) + "(" + Str(d, 12, 32) + (U32(d, 8) != 0 ? ",f" + U32(d, 8).ToString("x") : "") + ")");
+                    }
+                    var f = new byte[204];
+                    Put(f, 0, type);
+                    string g = ioctl(fd, G_FMT, f) < 0 ? "G_FMT errno " + Marshal.GetLastWin32Error()
+                        : (type == 9 || type == 10)
+                            ? "cur " + U32(f, 4) + "x" + U32(f, 8) + " " + FourCC(U32(f, 12)) + " planes=" + f[184] + " size0=" + U32(f, 24) + " bpl0=" + U32(f, 28)
+                            : "cur " + U32(f, 4) + "x" + U32(f, 8) + " " + FourCC(U32(f, 12)) + " bpl=" + U32(f, 20) + " size=" + U32(f, 24);
+                    if (fmts.Count > 0 || !g.StartsWith("G_FMT errno 22"))
+                        W("  type" + type + " fmts=[" + string.Join(" ", fmts) + "] " + g);
+                }
+                for (uint i = 0; i < 16; i++)
+                {
+                    var inp = new byte[80];
+                    Put(inp, 0, i);
+                    if (ioctl(fd, ENUMINPUT, inp) < 0) break;
+                    W("  input" + i + " name=" + Str(inp, 4, 32) + " type=" + U32(inp, 36) + " status=0x" + U32(inp, 56).ToString("x") + " caps=0x" + U32(inp, 60).ToString("x"));
+                }
+                var gi = new byte[4];
+                if (ioctl(fd, G_INPUT, gi) == 0) W("  g_input=" + U32(gi, 0));
+                uint id = 0; int nctl = 0;
+                while (nctl < 200)
+                {
+                    var q = new byte[68];
+                    Put(q, 0, id | CtrlNext);
+                    if (ioctl(fd, QUERYCTRL, q) < 0) break;
+                    id = U32(q, 0); nctl++;
+                    W("  ctrl 0x" + id.ToString("x8") + " '" + Str(q, 8, 32) + "' t=" + U32(q, 4) + " [" + (int)U32(q, 40) + ".." + (int)U32(q, 44) + "] def=" + (int)U32(q, 52) + " fl=0x" + U32(q, 56).ToString("x"));
+                }
+            }
+            finally { close(fd); }
+        }
+
+        static string CapNames(uint c)
+        {
+            var n = new List<string>();
+            if ((c & 0x1) != 0) n.Add("CAPTURE"); if ((c & 0x2) != 0) n.Add("OUTPUT"); if ((c & 0x4) != 0) n.Add("OVERLAY");
+            if ((c & 0x1000) != 0) n.Add("CAPTURE_MPLANE"); if ((c & 0x2000) != 0) n.Add("OUTPUT_MPLANE");
+            if ((c & 0x4000) != 0) n.Add("M2M_MPLANE"); if ((c & 0x8000) != 0) n.Add("M2M");
+            if ((c & 0x800000) != 0) n.Add("META_CAPTURE"); if ((c & 0x1000000) != 0) n.Add("READWRITE");
+            if ((c & 0x4000000) != 0) n.Add("STREAMING"); if ((c & 0x10000000) != 0) n.Add("TOUCH");
+            return string.Join(",", n);
+        }
+
+        // ---- DRM ----
+        static void DrmAll()
+        {
+            int fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+            if (fd < 0) { W("card0 open errno " + Marshal.GetLastWin32Error()); return; }
+            try
+            {
+                IntPtr v = drmGetVersion(fd);
+                if (v != IntPtr.Zero) { var c = new Cur(v); int ma = c.I(), mi = c.I(), pl = c.I(); c.I(); string nm = c.S(); c.I(); string dt = c.S(); c.I(); string ds = c.S(); W("version " + nm + " " + ma + "." + mi + "." + pl + " " + dt + " " + ds); }
+                ulong val;
+                foreach (ulong cp in new ulong[] { 0x1, 0x8, 0x10, 0x11 }) // DUMB_BUFFER, PRIME, ADDFB2_MODIFIERS, PAGE_FLIP_TARGET
+                    W("cap 0x" + cp.ToString("x") + " rc=" + drmGetCap(fd, cp, out val) + " val=" + val);
+                W("setcap universal_planes rc=" + drmSetClientCap(fd, 2, 1));
+                W("setcap atomic rc=" + drmSetClientCap(fd, 3, 1));
+                W("setcap writeback rc=" + drmSetClientCap(fd, 5, 1));
+
+                IntPtr r = drmModeGetResources(fd);
+                if (r == IntPtr.Zero) { W("GetResources null errno " + Marshal.GetLastWin32Error()); }
+                else
+                {
+                    var c = new Cur(r);
+                    uint[] fbs = c.Arr(), crtcs = c.Arr(), conns = c.Arr(), encs = c.Arr();
+                    W("res fbs=" + fbs.Length + " crtcs=" + crtcs.Length + " conns=" + conns.Length + " encs=" + encs.Length + " size " + c.U() + ".." + c.U() + " x " + c.U() + ".." + c.U());
+                    foreach (uint id in crtcs) Crtc(fd, id);
+                    foreach (uint id in conns) Conn(fd, id);
+                    foreach (uint id in encs)
+                    {
+                        IntPtr e = drmModeGetEncoder(fd, id);
+                        if (e == IntPtr.Zero) continue;
+                        var k = new Cur(e);
+                        W("encoder " + k.U() + " type=" + k.U() + " crtc=" + k.U() + " possible_crtcs=0x" + k.U().ToString("x") + " clones=0x" + k.U().ToString("x"));
+                    }
+                }
+                IntPtr pr = drmModeGetPlaneResources(fd);
+                if (pr == IntPtr.Zero) { W("GetPlaneResources null errno " + Marshal.GetLastWin32Error()); return; }
+                foreach (uint id in new Cur(pr).Arr()) Plane(fd, id);
+            }
+            finally { close(fd); }
+        }
+
+        static void Crtc(int fd, uint id)
+        {
+            IntPtr p = drmModeGetCrtc(fd, id);
+            if (p == IntPtr.Zero) { W("crtc " + id + " null"); return; }
+            var c = new Cur(p);
+            uint cid = c.U(), fb = c.U(), x = c.U(), y = c.U(), w = c.U(), h = c.U(); int valid = c.I();
+            c.Skip(68 - 32); string mode = c.Fixed(32);
+            W("crtc " + cid + " fb=" + fb + " " + w + "x" + h + "+" + x + "+" + y + " mode_valid=" + valid + " mode=" + mode + " " + Props(fd, cid, 0xcccccccc));
+            if (fb != 0) Fb(fd, fb);
+        }
+
+        static void Conn(int fd, uint id)
+        {
+            IntPtr p = drmModeGetConnector(fd, id);
+            if (p == IntPtr.Zero) { W("conn " + id + " null"); return; }
+            var c = new Cur(p);
+            uint cid = c.U(), enc = c.U(), type = c.U(), tid = c.U(), con = c.U(), mmw = c.U(), mmh = c.U(); c.U();
+            int nmodes = c.I();
+            W("conn " + cid + " type=" + type + (type == 18 ? "(WRITEBACK)" : "") + "-" + tid + " enc=" + enc + " connection=" + con + " " + mmw + "x" + mmh + "mm modes=" + nmodes + " " + Props(fd, cid, 0xc0c0c0c0));
+        }
+
+        static void Plane(int fd, uint id)
+        {
+            IntPtr p = drmModeGetPlane(fd, id);
+            if (p == IntPtr.Zero) { W("plane " + id + " null"); return; }
+            var c = new Cur(p);
+            uint[] fmts = c.Arr();
+            uint pid = c.U(), crtc = c.U(), fb = c.U(), cx = c.U(), cy = c.U(), x = c.U(), y = c.U(), poss = c.U();
+            var fs = new List<string>(); foreach (uint f in fmts) fs.Add(FourCC(f));
+            W("plane " + pid + " crtc=" + crtc + " fb=" + fb + " at " + cx + "," + cy + " src " + x + "," + y + " possible=0x" + poss.ToString("x") + " fmts=[" + string.Join(" ", fs) + "] " + Props(fd, pid, 0xeeeeeeee));
+            if (fb != 0) Fb(fd, fb);
+        }
+
+        static void Fb(int fd, uint id)
+        {
+            IntPtr p = drmModeGetFB(fd, id);
+            if (p == IntPtr.Zero) { W("  fb " + id + " GetFB null errno " + Marshal.GetLastWin32Error()); return; }
+            var c = new Cur(p);
+            W("  fb " + c.U() + " " + c.U() + "x" + c.U() + " pitch=" + c.U() + " bpp=" + c.U() + " depth=" + c.U() + " handle=" + c.U());
+        }
+
+        static string Props(int fd, uint obj, uint type)
+        {
+            IntPtr p = drmModeObjectGetProperties(fd, obj, type);
+            if (p == IntPtr.Zero) return "props=?";
+            var c = new Cur(p);
+            uint n = c.U(); IntPtr ids = c.P(), vals = c.P();
+            var sb = new StringBuilder("props{");
+            for (int i = 0; i < n; i++)
+            {
+                uint pid = (uint)Marshal.ReadInt32(ids, i * 4);
+                long val = Marshal.ReadInt64(vals, i * 8);
+                IntPtr pp = drmModeGetProperty(fd, pid);
+                string name = pp == IntPtr.Zero ? "#" + pid : new Cur(pp).Skip(8).Fixed(32);
+                sb.Append(name + "=" + val + (i + 1 < n ? " " : ""));
+            }
+            return sb.Append("}").ToString();
+        }
+
+        // ---- rm-video-capture ----
+        static void RmSupported()
+        {
+            dlerror();
+            IntPtr h = dlopen("libcapi-rm-video-capture.so.0", 2);
+            if (h == IntPtr.Zero) { IntPtr m = dlerror(); W("dlopen: " + (m == IntPtr.Zero ? "?" : Marshal.PtrToStringAnsi(m))); return; }
+            IntPtr s = dlsym(h, "_Z29rm_video_capture_is_supportedv");
+            W(s == IntPtr.Zero ? "is_supported: no symbol"
+                : "is_supported=" + Marshal.GetDelegateForFunctionPointer<BoolFn>(s)());
+        }
+
+        static void ListLibs()
+        {
+            string[] keys = { "rm-video", "hen", "encod", "mirror", "screen", "wfd", "cast", "scaler", "capture", "clone", "dp-control", "writeback" };
+            foreach (string dir in new[] { "/usr/lib", "/prd/usr/lib", "/usr/bin", "/prd/usr/bin" })
+            {
+                string[] files;
+                try { files = Directory.GetFiles(dir); } catch (Exception e) { W(dir + ": " + e.Message); continue; }
+                Array.Sort(files);
+                foreach (string f in files)
+                {
+                    string b = Path.GetFileName(f).ToLowerInvariant();
+                    bool hit = false; foreach (string k in keys) if (b.Contains(k)) { hit = true; break; }
+                    if (!hit) continue;
+                    long size = -1; try { size = new FileInfo(f).Length; } catch { }
+                    W(f + " " + size);
+                }
+            }
+        }
+
+        // ---- helpers ----
+        static void Upload(string ep, string f)
+        {
+            try { Post(ep, "lib__" + Path.GetFileName(f), File.ReadAllBytes(f)); Ambilight.L("probe: uploaded " + f); }
+            catch (Exception e) { Ambilight.L("probe: upload " + f + " failed: " + e.Message); }
+        }
+
+        static void Post(string endpoint, string name, byte[] data)
+        {
+            var d = new Dictionary<string, object> { { "name", name }, { "data", Convert.ToBase64String(data) } };
+            string err = Json.Post(endpoint + "/file", Json.ToJson(d), 60);
+            if (err != null) Ambilight.L("probe post " + name + ": " + err);
+        }
+
+        static uint U32(byte[] b, int o) { return BitConverter.ToUInt32(b, o); }
+        static void Put(byte[] b, int o, uint v) { BitConverter.GetBytes(v).CopyTo(b, o); }
+        static string Str(byte[] b, int o, int n) { int e = Array.IndexOf(b, (byte)0, o, n); return Encoding.ASCII.GetString(b, o, (e < 0 ? o + n : e) - o); }
+        static string FourCC(uint v)
+        {
+            var c = new char[4];
+            for (int i = 0; i < 4; i++) { byte x = (byte)(v >> (8 * i)); c[i] = x >= 32 && x < 127 ? (char)x : '?'; }
+            return new string(c);
+        }
+
+        /// <summary>Sequential reader over a native struct, applying C alignment for the current pointer size.</summary>
+        sealed class Cur
+        {
+            readonly IntPtr _p; int _o;
+            public Cur(IntPtr p) { _p = p; }
+            void Align(int a) { _o = (_o + a - 1) / a * a; }
+            public uint U() { Align(4); uint v = (uint)Marshal.ReadInt32(_p, _o); _o += 4; return v; }
+            public int I() { return (int)U(); }
+            public IntPtr P() { Align(IntPtr.Size); IntPtr v = Marshal.ReadIntPtr(_p, _o); _o += IntPtr.Size; return v; }
+            public string S() { IntPtr s = P(); return s == IntPtr.Zero ? "" : Marshal.PtrToStringAnsi(s); }
+            public Cur Skip(int n) { _o += n; return this; }
+            public string Fixed(int n) { string s = Marshal.PtrToStringAnsi(_p + _o) ?? ""; _o += n; return s.Length > n ? s.Substring(0, n) : s; }
+            /// <summary>An (int count, uint32_t* items) pair.</summary>
+            public uint[] Arr()
+            {
+                int n = I(); IntPtr a = P();
+                var r = new uint[Math.Max(0, Math.Min(n, 4096))];
+                for (int i = 0; i < r.Length; i++) r[i] = (uint)Marshal.ReadInt32(a, i * 4);
+                return r;
+            }
+        }
+    }
+}

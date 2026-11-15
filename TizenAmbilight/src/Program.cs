@@ -74,7 +74,7 @@ namespace TizenAmbilight
         public const string AppId = "dev.ritwickverma.TizenAmbilight";
         // Bump this whenever behaviour changes. It sat at "v3" through the HDR decode, the BT.2020->709
         // gamut map and the adaptive tone curve, which made build identification useless in telemetry.
-        public const string Version = "v6-s90c.1";
+        public const string Version = "v6-s90c.2";
 
         // ---- failure handling ----
         const int FailSleepMs = 200;                     // pause after a frame-less iteration
@@ -197,7 +197,9 @@ namespace TizenAmbilight
             string vErr = null;
             if (usePlane)
             {
+                VideoPlaneCapture.StubDir = ResDir();
                 vErr = VideoPlaneCapture.Init();
+                L("video-plane implementation preload: " + VideoPlaneCapture.PreloadStatus);
                 if (vErr != null) L("VIDEO-PLANE backend NOT ready: " + vErr +
                                     " (set preference captureBackend=file to fall back)");
                 else L("video-plane backend ready: " + VideoPlaneCapture.ResolvedPath + " @ 0x" +

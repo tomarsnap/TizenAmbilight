@@ -1,11 +1,11 @@
 {
-  "_comment": "TizenAmbilight settings. Copy to config.json in this folder, fill in, rebuild. Without a config.json this file ships as the template, and Apps2Samsung fills in the wledIp, ledCount, mapOffset, mapReverse and ppiZones lines below from its install form, so keep their exact formatting. Every key is optional; the README lists them all. S90C fork: captureBackend, ppiZones, gamma, adaptiveGamma, alpha and black are the values tuned on a Samsung S90C (Tizen 8), where full-frame capture is blocked and the hardware sampler is the only source.",
+  "_comment": "TizenAmbilight settings. Copy to config.json in this folder, fill in, rebuild. Without a config.json this file ships as the template, and Apps2Samsung fills in the wledIp, ledCount, mapOffset, mapReverse and ppiZones lines below from its install form, so keep their exact formatting. Every key is optional; the README lists them all. S90C fork: gamma, adaptiveGamma, alpha and black are the values tuned on a Samsung S90C (Tizen 8). Full-frame capture works there through the bundled libtzcapturec stub; ppiZones only matters while the hardware sampler covers DRM-protected video.",
   "wledIp": "",
   "ledCount": 0,
   "mapOffset": 0,
   "mapReverse": 0,
   "ppiZones": 12,
-  "captureBackend": "ppi",
+  "captureBackend": "video_plane",
   "gamma": 0.6,
   "adaptiveGamma": 0,
   "alpha": 0.5,
