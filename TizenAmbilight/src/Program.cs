@@ -74,7 +74,7 @@ namespace TizenAmbilight
         public const string AppId = "dev.ritwickverma.TizenAmbilight";
         // Bump this whenever behaviour changes. It sat at "v3" through the HDR decode, the BT.2020->709
         // gamut map and the adaptive tone curve, which made build identification useless in telemetry.
-        public const string Version = "v6";
+        public const string Version = "v6-s90c.1";
 
         // ---- failure handling ----
         const int FailSleepMs = 200;                     // pause after a frame-less iteration
@@ -887,8 +887,12 @@ namespace TizenAmbilight
                     // capture it happily forever and the strip holds one colour. That is the "lights
                     // stuck then go black" feel. Ramp DOWN slowly once the picture has been frozen for
                     // StaleMs, but ramp back UP fast, so resuming is instant and cannot feel laggy.
+                    // Not on the sampler: it measures the composed picture as shown, so it cannot hold a
+                    // stale plane, and a static picture is really on screen. Its 12 point samples also read
+                    // "frozen" whenever the edges are calm, so the fade pumped on near-static content (a flat
+                    // background with small moving objects): dim after 6 s, snap back when one spot moved.
                     double dimTarget = 1.0;
-                    if (cfg.StaleMs > 0 && st.LastContentChangeUtc != DateTime.MinValue)
+                    if (ppiDtSec <= 0 && cfg.StaleMs > 0 && st.LastContentChangeUtc != DateTime.MinValue)
                     {
                         double staleAge = (DateTime.UtcNow - st.LastContentChangeUtc).TotalMilliseconds;
                         if (staleAge > cfg.StaleMs) dimTarget = cfg.StaleLevel;

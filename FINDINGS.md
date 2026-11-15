@@ -237,8 +237,9 @@ apps2samsung-cli launch dev.ritwickverma.TizenAmbilight --tv <tv-ip>   # or cold
 
 ### Gotchas
 
-- **Pressing OK on the TV's "Error, please wait and try again" popup** after a CLI `launch` kills the
-  service. Leave the popup alone (it appears because a headless service was "launched" like an app).
+- A CLI `launch` shows an "Error, please wait and try again" popup and prints `launch failed[404]`
+  (a headless service was "launched" like an app). Both are harmless: the service starts anyway (WLED goes
+  live after about 10 s), and pressing OK on the popup or ignoring it makes no difference (checked 2026-11-15).
 - The TV is **32-bit ARM**: P/Invoke `ssize_t`/`size_t` as `IntPtr`, not `long` (a `getxattr` binding
   with `long` crashed).
 - Send `pause` over the control channel before installing over a running copy (upstream's scaler-wedge

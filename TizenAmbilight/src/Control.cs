@@ -88,6 +88,7 @@ namespace TizenAmbilight
                     // -1 = the TV-reported value. pz: positions measured round the perimeter.
                     case "psleep":  if (iv >= -1 && iv <= 200) PpiCapture.SleepOverrideMs = iv; break;
                     case "pcal":    if (dv == 0 || dv == 1) PpiCapture.CalEnabled = dv != 0; break;
+                    case "pmed":    if (dv == 0 || dv == 1) PpiCapture.MedianEnabled = dv != 0; break;
                     case "pz":      if (iv >= 4 && iv <= 73) PpiCapture.PzRequested = iv; break;
                     // Exercises the shutdown path on demand (see SelfTestShutdown).
                     case "shutdown": if (iv == 1) SelfTestShutdown(); break;

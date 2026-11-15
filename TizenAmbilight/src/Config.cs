@@ -339,6 +339,8 @@ namespace TizenAmbilight
             // ppiSettleMs: -1 = the settle time the TV reports (default); >=0 overrides it.
             PpiCapture.PzRequested = Math.Max(4, Math.Min(73, PrefInt("ppiZones", 24)));
             PpiCapture.SleepOverrideMs = Math.Max(-1, Math.Min(200, PrefInt("ppiSettleMs", -1)));
+            // ppiMedian: per-spot median of the last 3 readings, drops single outlier reads (PpiCapture.Filter). Off by default.
+            PpiCapture.MedianEnabled = PrefInt("ppiMedian", 0) != 0;
             c.RequestWidth = PrefInt("requestWidth", CaptureApi.RequestWidth);
             if (c.RequestWidth < 16) c.RequestWidth = 16;
             if (c.RequestWidth > 3840) c.RequestWidth = 3840;
