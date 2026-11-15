@@ -19,6 +19,11 @@
 > - **`config.example.json` carries the S90C tuning:** the sampler forced on with 12 spots, gamma 0.6
 >   with adaptive gamma off, alpha 0.5, black 0. Copy it to `config.json`, then fill in `wledIp`,
 >   `ledCount`, `mapOffset` and `mapReverse` for your own strip.
+> - That tuning was done by eye on an **SK6812 RGBW strip with a warm-white (~3000K) W channel**, with
+>   WLED auto-white set to **"Brighter"** ("Accurate" was too yellow, "None" too bluish) and WLED's
+>   realtime gamma correction **off** (the app's `gamma` does that job; WLED's per-channel gamma would
+>   undo the colour calibration). With an RGB-only or cool-white strip, whites will look different and need retuning
+>   (WLED auto-white mode or colour balance first).
 >
 > Build, sign (partner certificate for your own TV's DUID) and install exactly as described below.
 > [FINDINGS.md](FINDINGS.md) has the details: what is blocked and why, the calibration, and the tools.
