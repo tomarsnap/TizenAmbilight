@@ -57,7 +57,7 @@
         "type": "number",
         "required": false,
         "pattern": "^([4-9]|[1-6][0-9]|7[0-3])$",
-        "find": "\"ppiZones\": 24,",
+        "find": "\"ppiZones\": 12,",
         "replace": "\"ppiZones\": {value},"
       }
     ]

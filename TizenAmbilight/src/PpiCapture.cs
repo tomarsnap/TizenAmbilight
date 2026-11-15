@@ -431,17 +431,18 @@ namespace TizenAmbilight
         static byte To8(double v10) { int v = (int)((v10 + 0.5) / 4.0); return (byte)(v < 0 ? 0 : v > 255 ? 255 : v); }
 
         // ---- colour calibration for the measure block. It reports the TV's internal signal, not display
-        // colour: on an S90C fed HDR, sRGB red read 406,128,54 and white 445,462,461 (10-bit). A
-        // root-polynomial fit (features r,g,b,sqrt(rg),sqrt(gb),sqrt(rb) on white-normalised values) over
-        // 16 measured patches maps it back to within ~9/255 rms. Config ppiCal (21 numbers: white R,G,B then
-        // 3 rows of 6), token pcal=0/1. ----
+        // colour: on an S90C fed HDR over HDMI, sRGB red read 406,128,54 and white 445,462,461 (10-bit). A
+        // root-polynomial fit (features r,g,b,sqrt(rg),sqrt(gb),sqrt(rb) on white-normalised values) maps
+        // it back. The default below is the S90C fit for the TV's own Jellyfin app, SDR and HDR10 together
+        // (~11/255 rms, see FINDINGS.md); other apps and HDMI inputs read differently. Config ppiCal
+        // (21 numbers: white R,G,B then 3 rows of 6), ppiCalOn 0/1, token pcal=0/1. ----
         public static volatile bool CalEnabled = true;
         public static double[] Cal =
         {
-            445, 462, 461,
-            -0.484, -2.531, -0.080, 3.971, -0.192, 0.304,
-            -0.927, -0.041, -0.386, 1.924, 0.621, -0.168,
-            -0.104, -0.813, 0.466, 0.098, 1.189, 0.189,
+            986, 994, 838,
+            -0.28505, -2.76982, 0.05827, 4.1143, -0.2405, 0.09987,
+            -0.88135, 0.29173, -0.32897, 1.62928, 0.41442, -0.11464,
+            -0.06871, -0.80847, 0.68459, -0.08461, 1.14391, 0.14295,
         };
 
         static void Calibrate(int[] v, int n)

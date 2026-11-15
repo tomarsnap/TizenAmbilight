@@ -14,8 +14,11 @@
 > - **Colour calibration** for those measurements, on by default. The built-in numbers were fitted on an
 >   S90C watching through the TV's Jellyfin app (SDR and HDR10). Other apps and inputs read differently;
 >   set `"ppiCalOn": 0` in `config.json` to turn it off, or refit with the scripts in `calibration/`.
-> - Gamma below 1 is allowed (darker dark scenes; I use `"gamma": 0.6`), and the sampler snaps to scene
->   cuts per zone instead of smoothing them.
+> - Gamma below 1 is allowed (darker dark scenes), and the sampler snaps to scene cuts per zone instead
+>   of smoothing them.
+> - **`config.example.json` carries the S90C tuning:** the sampler forced on with 12 spots, gamma 0.6
+>   with adaptive gamma off, alpha 0.5, black 0. Copy it to `config.json`, then fill in `wledIp`,
+>   `ledCount`, `mapOffset` and `mapReverse` for your own strip.
 >
 > Build, sign (partner certificate for your own TV's DUID) and install exactly as described below.
 > [FINDINGS.md](FINDINGS.md) has the details: what is blocked and why, the calibration, and the tools.
