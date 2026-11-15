@@ -1,0 +1,15 @@
+white [890, 928, 922] n 2 spread 0 up 35
+0x808080 [534, 555, 553] n 2 spread 1 up 45
+0x404040 [242, 250, 250] n 2 spread 1 up 51
+red [832, 203, 0] n 6 spread 0 up 61
+lime [307, 965, 149] n 6 spread 0 up 71
+blue [143, 37, 956] n 6 spread 0 up 76
+yellow [835, 900, 203] n 6 spread 1 up 86
+cyan [151, 620, 611] n 6 spread 0 up 91
+magenta [894, 276, 1003] n 6 spread 0 up 101
+0xfa8072 [839, 475, 376] n 6 spread 1 up 111
+0xff8000 [819, 428, 27] n 6 spread 0 up 116
+0x8000ff [435, 93, 916] n 6 spread 28 up 126
+0x800080 [608, 125, 654] n 6 spread 39 up 132
+0x804000 [516, 271, 15] n 6 spread 33 up 142
+0xffc0a0 [886, 687, 547] n 6 spread 57 up 152

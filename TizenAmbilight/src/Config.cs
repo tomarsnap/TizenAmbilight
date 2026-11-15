@@ -206,7 +206,7 @@ namespace TizenAmbilight
             // pixels sat at PQ codes 16-31 (0.09-0.28 nits), where gamma 1.2 left the LEDs at 0.2%.
             // This is the manual curve; with adaptiveGamma on it is only the fallback.
             c.Gamma = PrefDouble("gamma", 1.5);
-            if (c.Gamma < 1.0) c.Gamma = 1.0;
+            if (c.Gamma < 0.25) c.Gamma = 0.25;   // < 1 darkens: the stream is gamma-encoded, the LEDs are linear
             if (c.Gamma > 4.0) c.Gamma = 4.0;
             // ADAPTIVE TONE CURVE. One static gamma cannot suit both a film sitting at 0.09-0.28 nits
             // and a bright game. The surround-gamma rule says a darker viewing condition wants a
@@ -287,6 +287,17 @@ namespace TizenAmbilight
             c.Hdr = PrefInt("hdr", 1) != 0;
             // HDR reference white in nits: what maps to full scale. 203 is the BT.2408 diffuse white.
             VideoPlaneCapture.HdrPeakNits = Math.Max(100.0, Math.Min(4000.0, PrefDouble("peak", 203.0)));
+            PpiCapture.CalEnabled = PrefInt("ppiCalOn", 1) != 0;
+            {
+                string cal = PrefString("ppiCal", "");
+                string[] parts = cal.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 21)
+                {
+                    var k = new double[21]; bool ok = true;
+                    for (int i = 0; i < 21 && ok; i++) ok = double.TryParse(parts[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out k[i]);
+                    if (ok && k[0] > 0 && k[1] > 0 && k[2] > 0) PpiCapture.Cal = k;
+                }
+            }
             c.Gamut = PrefInt("gamut", 1) != 0;
             // Stride 3 scans ~9x fewer pixels per zone at 1.4% mean error against every pixel. Zone
             // extraction, not capture, was the frame-rate ceiling.

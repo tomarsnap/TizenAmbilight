@@ -1,5 +1,28 @@
 # TizenAmbilight
 
+> [!NOTE]
+> **This is a fork with Samsung S90C / Tizen 8 support** (branch `s90c`), tested on one 2023
+> QE77S90C. Upstream is [RitwickVerma/TizenAmbilight](https://github.com/RitwickVerma/TizenAmbilight);
+> the generic parts are being offered there as pull requests.
+>
+> What differs from upstream:
+>
+> - **Tizen 8 works.** Tizen 8 exports the TV's colour-measurement API as `ve_*` instead of `ppi_ve_*`;
+>   the sampler now tries `ppi_ve`, `ve` and `cs_ve`.
+> - **Full-frame capture is blocked** by Tizen 8 firmware, even with a partner certificate. The app falls
+>   back to the measurement API: about 12 spots round the edge, so the glow is softer than on a Tizen 9 TV.
+> - **Colour calibration** for those measurements, on by default. The built-in numbers were fitted on an
+>   S90C watching through the TV's Jellyfin app (SDR and HDR10). Other apps and inputs read differently;
+>   set `"ppiCalOn": 0` in `config.json` to turn it off, or refit with the scripts in `calibration/`.
+> - Gamma below 1 is allowed (darker dark scenes; I use `"gamma": 0.6`), and the sampler snaps to scene
+>   cuts per zone instead of smoothing them.
+>
+> Build, sign (partner certificate for your own TV's DUID) and install exactly as described below.
+> [FINDINGS.md](FINDINGS.md) has the details: what is blocked and why, the calibration, and the tools.
+>
+> If the strip stops reacting, check that the app is still running. A normal remote power press is only
+> standby; hold the power button about 5 s to fully restart the TV, which starts the app again.
+
 [![pipeline](https://gitlab.com/ritwick7/TizenAmbilight/badges/master/pipeline.svg)](https://gitlab.com/ritwick7/TizenAmbilight/-/pipelines)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![site](https://img.shields.io/badge/site-ritwickverma.dev-ff6f00)](https://www.ritwickverma.dev/)

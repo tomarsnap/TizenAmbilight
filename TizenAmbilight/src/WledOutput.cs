@@ -107,13 +107,15 @@ namespace TizenAmbilight
                 i %= zones;
                 if (i < 0) i += zones;
 
-                // Tone-map through LUMA and scale R/G/B by that SAME factor, instead of pushing each
-                // channel through the curve independently. A per-channel curve lifts a low channel
-                // more than a high one, which compresses their ratio - measured as ~10% relative
-                // saturation loss plus a hue shift on real zone colours. Scaling by a common factor
-                // changes brightness only, so hue and saturation survive the tone map intact.
+                // Tone-map through the BRIGHTEST CHANNEL and scale R/G/B by that SAME factor, instead
+                // of pushing each channel through the curve independently. A per-channel curve lifts a
+                // low channel more than a high one, which compresses their ratio - measured as ~10%
+                // relative saturation loss plus a hue shift on real zone colours. Scaling by a common
+                // factor changes brightness only, so hue and saturation survive the tone map intact.
+                // Max rather than luma: with gamma < 1 (darkening), luma would read a saturated blue
+                // (luma 29 of 255) as near-black and crush it, while max keeps it at full scale.
                 byte r0 = colors.R[i], g0 = colors.G[i], b0 = colors.B[i];
-                int luma = (299 * r0 + 587 * g0 + 114 * b0) / 1000;
+                int luma = r0 > g0 ? (r0 > b0 ? r0 : b0) : (g0 > b0 ? g0 : b0);
                 int nl = t[luma];
                 if (luma <= 0)
                 {

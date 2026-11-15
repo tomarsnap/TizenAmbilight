@@ -34,3 +34,6 @@ credentials.json
 .DS_Store
 .serena/
 .idea/
+
+# Samsung firmware binaries pulled from the TV (local reverse-engineering only)
+calibration/tv-libs/

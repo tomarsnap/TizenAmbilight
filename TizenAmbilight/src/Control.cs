@@ -54,7 +54,7 @@ namespace TizenAmbilight
                     // ---- tuning knobs, live. Lower alpha = MORE smoothing (longer EMA time constant).
                     case "alpha": if (dv >= 0.02 && dv <= 1.0) cfg.Alpha = dv; break;
                     case "gain":  if (dv >= 0.1 && dv <= 8.0) cfg.Gain = dv; break;
-                    case "gamma": if (dv >= 1.0 && dv <= 4.0) cfg.Gamma = dv; break;
+                    case "gamma": if (dv >= 0.25 && dv <= 4.0) cfg.Gamma = dv; break;
                     case "sat":   if (dv >= 0.0 && dv <= 4.0) cfg.Saturation = dv; break;
                     case "hdr":  if (dv == 0 || dv == 1) cfg.Hdr = dv != 0; break;
                     // Capture request size, live. The hardware scaler downsamples to whatever we ask
@@ -87,6 +87,7 @@ namespace TizenAmbilight
                     // psleep: settle time (ms) between arming the measure slots and reading them back.
                     // -1 = the TV-reported value. pz: positions measured round the perimeter.
                     case "psleep":  if (iv >= -1 && iv <= 200) PpiCapture.SleepOverrideMs = iv; break;
+                    case "pcal":    if (dv == 0 || dv == 1) PpiCapture.CalEnabled = dv != 0; break;
                     case "pz":      if (iv >= 4 && iv <= 73) PpiCapture.PzRequested = iv; break;
                     // Exercises the shutdown path on demand (see SelfTestShutdown).
                     case "shutdown": if (iv == 1) SelfTestShutdown(); break;

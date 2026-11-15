@@ -1,0 +1,135 @@
+/usr/lib/libaudio-capture.so size=21 readable | loaded
+/usr/lib/libaudio-capture.so.0 size=23 readable | loaded
+/usr/lib/libaudio-capture.so.0.1 size=9612 readable | loaded
+/usr/lib/libcapi-audio-capture.so size=26 readable | loaded
+/usr/lib/libcapi-audio-capture.so.0 size=28 readable | loaded
+/usr/lib/libcapi-audio-capture.so.0.1 size=5496 readable | loaded
+/usr/lib/libcapi-rm-video-capture.so size=29 readable | loaded
+/usr/lib/libcapi-rm-video-capture.so.0 size=33 readable | loaded
+/usr/lib/libcapi-rm-video-capture.so.0.0.1 size=13716 readable | loaded
+/usr/lib/libcapi-video-capture.so size=26 readable | loaded
+/usr/lib/libcapi-video-capture.so.0 size=30 readable | loaded
+/usr/lib/libcapi-video-capture.so.0.1.0 size=13800 readable | loaded
+/usr/lib/libdisplay-capture-api.so.0 size=29 readable | loaded
+/usr/lib/libdisplay-capture-api.so.0.0 size=30348 readable | loaded
+/usr/lib/libds-tizen-scaler.so.0 size=27 readable | loaded
+/usr/lib/libds-tizen-scaler.so.0.1.2 size=11892 readable | loaded
+/usr/lib/libep-common-screencapture.so size=17936 readable | dlopen failed: /usr/lib/libep-common-screencapture.so: undefined symbol: _ZN11ep_fileutil15CreateDirectoryEPKc
+/usr/lib/libkeystone-ppi.so size=20 readable | loaded
+/usr/lib/libkeystone-ppi.so.0 size=22 readable | loaded
+/usr/lib/libkeystone-ppi.so.0.1 size=56960 readable | loaded
+/usr/lib/libppi-acm-core-acmd.so size=25 readable | loaded
+/usr/lib/libppi-acm-core-acmd.so.0 size=27 readable | loaded
+/usr/lib/libppi-acm-core-acmd.so.0.1 size=7236 readable | loaded
+/usr/lib/libppi-npu-control.so size=23 readable | loaded
+/usr/lib/libppi-npu-control.so.0 size=25 readable | loaded
+/usr/lib/libppi-npu-control.so.0.1 size=5456 readable | loaded
+/usr/lib/libppi_wrapper.so size=5368 readable | loaded
+/usr/lib/libscaler-client.so.0 size=25 readable | loaded
+/usr/lib/libscaler-client.so.0.0.0 size=5272 readable | loaded
+/usr/lib/libscaler-server.so.0 size=25 readable | loaded
+/usr/lib/libscaler-server.so.0.0.0 size=6808 readable | loaded
+/usr/lib/libtzcapturec.so size=17784 NOT readable: Access to the path '/usr/lib/libtzcapturec.so' is denied. | dlopen failed: /usr/lib/libtzcapturec.so: cannot open shared object file: Operation not permitted
+/usr/lib/libvideo-capture.so.0 size=25 readable | loaded
+/usr/lib/libvideo-capture.so.0.1.0 size=19916 readable | loaded
+/usr/lib/libvideo-dp-control-c-glue.so.0 size=33 readable | loaded
+/usr/lib/libvideo-dp-control-c-glue.so.0.1 size=5324 readable | loaded
+/usr/lib/libvideo-dp-control.so.0 size=28 readable | loaded
+/usr/lib/libvideo-dp-control.so.0.1.0 size=15996 readable | loaded
+/usr/lib/libvideoenhance.so size=20 readable | loaded
+/usr/lib/libvideoenhance.so.0 size=22 readable | loaded
+/usr/lib/libvideoenhance.so.0.1 size=78428 readable | loaded
+/usr/lib/tzcapture.manifest size=84 readable | dlopen failed: /usr/lib/tzcapture.manifest: invalid ELF header
+/lib/libaudio-capture.so size=21 readable | loaded
+/lib/libaudio-capture.so.0 size=23 readable | loaded
+/lib/libaudio-capture.so.0.1 size=9612 readable | loaded
+/lib/libcapi-audio-capture.so size=26 readable | loaded
+/lib/libcapi-audio-capture.so.0 size=28 readable | loaded
+/lib/libcapi-audio-capture.so.0.1 size=5496 readable | loaded
+/lib/libcapi-rm-video-capture.so size=29 readable | loaded
+/lib/libcapi-rm-video-capture.so.0 size=33 readable | loaded
+/lib/libcapi-rm-video-capture.so.0.0.1 size=13716 readable | loaded
+/lib/libcapi-video-capture.so size=26 readable | loaded
+/lib/libcapi-video-capture.so.0 size=30 readable | loaded
+/lib/libcapi-video-capture.so.0.1.0 size=13800 readable | loaded
+/lib/libdisplay-capture-api.so.0 size=29 readable | loaded
+/lib/libdisplay-capture-api.so.0.0 size=30348 readable | loaded
+/lib/libds-tizen-scaler.so.0 size=27 readable | loaded
+/lib/libds-tizen-scaler.so.0.1.2 size=11892 readable | loaded
+/lib/libep-common-screencapture.so size=17936 readable | dlopen failed: /lib/libep-common-screencapture.so: undefined symbol: _ZN11ep_fileutil15CreateDirectoryEPKc
+/lib/libkeystone-ppi.so size=20 readable | loaded
+/lib/libkeystone-ppi.so.0 size=22 readable | loaded
+/lib/libkeystone-ppi.so.0.1 size=56960 readable | loaded
+/lib/libppi-acm-core-acmd.so size=25 readable | loaded
+/lib/libppi-acm-core-acmd.so.0 size=27 readable | loaded
+/lib/libppi-acm-core-acmd.so.0.1 size=7236 readable | loaded
+/lib/libppi-npu-control.so size=23 readable | loaded
+/lib/libppi-npu-control.so.0 size=25 readable | loaded
+/lib/libppi-npu-control.so.0.1 size=5456 readable | loaded
+/lib/libppi_wrapper.so size=5368 readable | loaded
+/lib/libscaler-client.so.0 size=25 readable | loaded
+/lib/libscaler-client.so.0.0.0 size=5272 readable | loaded
+/lib/libscaler-server.so.0 size=25 readable | loaded
+/lib/libscaler-server.so.0.0.0 size=6808 readable | loaded
+/lib/libtzcapturec.so size=17784 NOT readable: Access to the path '/lib/libtzcapturec.so' is denied. | dlopen failed: /lib/libtzcapturec.so: cannot open shared object file: Operation not permitted
+/lib/libvideo-capture.so.0 size=25 readable | loaded
+/lib/libvideo-capture.so.0.1.0 size=19916 readable | loaded
+/lib/libvideo-dp-control-c-glue.so.0 size=33 readable | loaded
+/lib/libvideo-dp-control-c-glue.so.0.1 size=5324 readable | loaded
+/lib/libvideo-dp-control.so.0 size=28 readable | loaded
+/lib/libvideo-dp-control.so.0.1.0 size=15996 readable | loaded
+/lib/libvideoenhance.so size=20 readable | loaded
+/lib/libvideoenhance.so.0 size=22 readable | loaded
+/lib/libvideoenhance.so.0.1 size=78428 readable | loaded
+/lib/tzcapture.manifest size=84 readable | dlopen failed: /lib/tzcapture.manifest: invalid ELF header
+/proc/self/attr/current: User::Pkg::dev.ritwickverma.TizenAmbilight
+/etc/info.ini: [Version] | Model=Tizen8/TV; | Build=latest; | Release=latest; | [Build] | Type=eng; | Date=20250620_163238; | Time=16:32:38; | Variant=NONE; | ID=latest; |
+/etc/tizen-release: Tizen8/TV 8.0.0 (arm) | VERSION = 8.0.0 | CODENAME = TSEVENDF | BUILD_ID=T-PTMCDEUC-0080-REL-202506210102 |
+/etc/os-release: NAME=Tizen | VERSION="8.0.0 (Tizen8/TV)" | ID=tizen | VERSION_ID=8.0.0 | PRETTY_NAME="Tizen 8.0.0 (Tizen8/TV)" | ANSI_COLOR="0;36" | CPE_NAME="cpe:/o:tizen:tizen:8.0.0" | BUILD_ID=T-PTMCDEUC-0080-REL-202506210102 |
+---- round2
+dlopen /prd/usr/lib/libvideo-capture-impl-sec.so: libtzcapturec.so: cannot open shared object file: Operation not permitted
+dlopen /usr/lib/libtzcapturec.so: /usr/lib/libtzcapturec.so: cannot open shared object file: Operation not permitted
+xattr /usr/lib/libtzcapturec.so: SMACK64=_ SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /prd/usr/lib/libvideo-capture-impl-sec.so: SMACK64=_ SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /dev/video30: SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /dev/dri/card0: SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /usr/lib/libvideo-capture.so.0.1.0: SMACK64=_ SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+dev /dev/video51 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video50 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tztv_frc_ew SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tztv_tcon SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tztv_frc SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video28 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video63 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video62 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video61 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video60 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video33 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video32 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video31 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video30 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video40 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video22 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video21 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video14 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video13 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video12 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video11 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video10 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video24 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video20 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tzlog SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzlog' is denied.
+dev /dev/tzrsrc SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzrsrc' is denied.
+dev /dev/tzmem SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tzdev_invoke SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzdev_invoke' is denied.
+dev /dev/tzdev SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzdev' is denied.
+self Uid:	5001	5001	5001	5001
+self Gid:	100	100	100	100
+self Groups:	29 44 100 201 6509 10013 10704 10705 
+prd /prd/usr/lib/libaudio-capture-impl-sec.so openable
+prd /prd/usr/lib/libaudio-capture-impl-sec.so.0 openable
+prd /prd/usr/lib/libaudio-capture-impl-sec.so.0.1 openable
+prd /prd/usr/lib/libaudio-capture-impl.so openable
+prd /prd/usr/lib/libvideo-capture-impl-sec.so openable
+prd /prd/usr/lib/libvideo-capture-impl-sec.so.0 openable
+prd /prd/usr/lib/libvideo-capture-impl-sec.so.0.1.0 openable

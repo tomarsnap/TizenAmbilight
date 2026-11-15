@@ -51,9 +51,10 @@ namespace TizenAmbilight
     {
         public const string BackendName = "ppi";
         const string LibPath = "/usr/lib/libvideoenhance.so";
-        const string SymCond = "ppi_ve_get_rgb_measure_condition";
-        const string SymPos = "ppi_ve_set_rgb_measure_position";
-        const string SymPix = "ppi_ve_get_rgb_measure_pixel";
+        // Samsung renamed the export family across firmware generations: ppi_ve_ (Tizen 9+), ve_ (Tizen 7/8),
+        // cs_ve_ (older). Same signatures; the first complete family wins.
+        static readonly string[] Families = { "ppi_ve", "ve", "cs_ve" };
+        public static string Family = "";
 
         const int RTLD_LAZY = 0x00001;
         const int BufBytes = 256;
@@ -120,10 +121,17 @@ namespace TizenAmbilight
                     if (_lib == IntPtr.Zero) _lib = dlopen(LibPath, RTLD_LAZY);
                     if (_lib == IntPtr.Zero) _lib = dlopen("libvideoenhance.so", RTLD_LAZY);
                     if (_lib == IntPtr.Zero) return Fail("dlopen libvideoenhance.so failed (no hardware measure API on this TV)");
-                    IntPtr fc = dlsym(_lib, SymCond), fp = dlsym(_lib, SymPos), fx = dlsym(_lib, SymPix);
-                    if (fc == IntPtr.Zero || fp == IntPtr.Zero || fx == IntPtr.Zero)
-                        return Fail("dlsym failed: cond=" + (fc != IntPtr.Zero) + " pos=" + (fp != IntPtr.Zero) +
-                                    " pix=" + (fx != IntPtr.Zero));
+                    IntPtr fc = IntPtr.Zero, fp = IntPtr.Zero, fx = IntPtr.Zero;
+                    string seen = "";
+                    foreach (string fam in Families)
+                    {
+                        fc = dlsym(_lib, fam + "_get_rgb_measure_condition");
+                        fp = dlsym(_lib, fam + "_set_rgb_measure_position");
+                        fx = dlsym(_lib, fam + "_get_rgb_measure_pixel");
+                        seen += fam + "=" + (fc != IntPtr.Zero) + "/" + (fp != IntPtr.Zero) + "/" + (fx != IntPtr.Zero) + " ";
+                        if (fc != IntPtr.Zero && fp != IntPtr.Zero && fx != IntPtr.Zero) { Family = fam; break; }
+                    }
+                    if (Family.Length == 0) return Fail("dlsym failed: " + seen.Trim());
                     if (_condBuf == IntPtr.Zero) _condBuf = Marshal.AllocHGlobal(BufBytes);   // once: a retry must not leak
                     if (_colBuf == IntPtr.Zero) _colBuf = Marshal.AllocHGlobal(BufBytes);
                     Marshal.Copy(_zero, 0, _condBuf, BufBytes);
@@ -141,7 +149,7 @@ namespace TizenAmbilight
                     FullH = Marshal.ReadInt32(_condBuf, 20);
                     CondExtra6 = Marshal.ReadInt32(_condBuf, 24);
                     CondExtra7 = Marshal.ReadInt32(_condBuf, 28);
-                    if (CondRc < 0) return Fail("ppi_ve_get_rgb_measure_condition rc=" + CondRc);
+                    if (CondRc < 0) return Fail(Family + "_get_rgb_measure_condition rc=" + CondRc);
                     if (Slots <= 0 || FullW <= 0 || FullH <= 0 || BlockW <= 0 || BlockH <= 0)
                         return Fail("implausible condition: slots=" + Slots + " full=" + FullW + "x" + FullH +
                                     " block=" + BlockW + "x" + BlockH);
@@ -397,6 +405,7 @@ namespace TizenAmbilight
                 zc = Math.Min(_zones, r8.Length);
             }
             if (n == 0) return 0;
+            if (CalEnabled) Calibrate(_snapV, n);
             int[] zs = _snapZ, vs = _snapV;
             for (int m = 0; m < n; m++)
             {
@@ -420,6 +429,36 @@ namespace TizenAmbilight
         }
 
         static byte To8(double v10) { int v = (int)((v10 + 0.5) / 4.0); return (byte)(v < 0 ? 0 : v > 255 ? 255 : v); }
+
+        // ---- colour calibration for the measure block. It reports the TV's internal signal, not display
+        // colour: on an S90C fed HDR, sRGB red read 406,128,54 and white 445,462,461 (10-bit). A
+        // root-polynomial fit (features r,g,b,sqrt(rg),sqrt(gb),sqrt(rb) on white-normalised values) over
+        // 16 measured patches maps it back to within ~9/255 rms. Config ppiCal (21 numbers: white R,G,B then
+        // 3 rows of 6), token pcal=0/1. ----
+        public static volatile bool CalEnabled = true;
+        public static double[] Cal =
+        {
+            445, 462, 461,
+            -0.484, -2.531, -0.080, 3.971, -0.192, 0.304,
+            -0.927, -0.041, -0.386, 1.924, 0.621, -0.168,
+            -0.104, -0.813, 0.466, 0.098, 1.189, 0.189,
+        };
+
+        static void Calibrate(int[] v, int n)
+        {
+            double[] k = Cal;
+            for (int m = 0; m < n; m++)
+            {
+                double r = Math.Max(0, v[m * 3] / k[0]), g = Math.Max(0, v[m * 3 + 1] / k[1]), b = Math.Max(0, v[m * 3 + 2] / k[2]);
+                double rg = Math.Sqrt(r * g), gb = Math.Sqrt(g * b), rb = Math.Sqrt(r * b);
+                for (int c = 0; c < 3; c++)
+                {
+                    int o = 3 + c * 6;
+                    double x = k[o] * r + k[o + 1] * g + k[o + 2] * b + k[o + 3] * rg + k[o + 4] * gb + k[o + 5] * rb;
+                    v[m * 3 + c] = x <= 0 ? 0 : x >= 1 ? 1023 : (int)(x * 1023 + 0.5);
+                }
+            }
+        }
 
         // ================================================================ active picture area
         //
@@ -785,6 +824,8 @@ namespace TizenAmbilight
             {
                 { "ready", Ready },
                 { "init_error", InitError ?? "" },
+                { "family", Family },
+                { "calibration", CalEnabled },
                 { "sampler_running", Running },
                 { "thread_errors", Interlocked.Read(ref ThreadErrors) },
                 { "thread_last_error", LastError },

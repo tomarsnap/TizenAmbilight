@@ -1,0 +1,226 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+
+namespace TizenAmbilight
+{
+    /// <summary>
+    /// One-shot device diagnostics for porting to other firmware: which capture-related libraries
+    /// exist, whether this app may load them (dlerror text), and copies of the readable ones posted
+    /// to the collector's /file endpoint for offline disassembly. Read-only; makes no capture calls.
+    /// </summary>
+    static class Diag
+    {
+        [DllImport("libdl.so.2", EntryPoint = "dlopen", CharSet = CharSet.Ansi)]
+        static extern IntPtr dlopen(string filename, int flags);
+        [DllImport("libdl.so.2", EntryPoint = "dlerror")]
+        static extern IntPtr dlerror();
+
+        static readonly string[] Keywords =
+            { "capture", "videoenhance", "secvideo", "tzcapture", "ppi", "video-dp", "vdec", "scaler" };
+        static readonly string[] Dirs = { "/usr/lib", "/usr/lib/driver", "/lib" };
+        const long MaxUpload = 6 * 1024 * 1024;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int IntOutFn(IntPtr p);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int StrOutFn(IntPtr p, int len);
+        [DllImport("libdl.so.2", EntryPoint = "dlsym", CharSet = CharSet.Ansi)]
+        static extern IntPtr dlsym(IntPtr handle, string symbol);
+
+        /// <summary>Poll a few libvideoenhance state getters every 2 s and post them as ve_state.txt, to
+        /// find one that tells HDR input from SDR (the measure block's scale differs between them).</summary>
+        static void VeMonitor(string endpoint)
+        {
+            IntPtr lib = dlopen("/usr/lib/libvideoenhance.so", 1);
+            if (lib == IntPtr.Zero) return;
+            string[] ints = { "ve_get_color_space_info_status", "ve_get_pc_mode", "ve_get_dynamic_brightness_mode", "ve_get_histo_value" };
+            var fns = new IntOutFn[ints.Length];
+            for (int i = 0; i < ints.Length; i++) { IntPtr f = dlsym(lib, ints[i]); if (f != IntPtr.Zero) fns[i] = (IntOutFn)Marshal.GetDelegateForFunctionPointer(f, typeof(IntOutFn)); }
+            IntPtr fb = dlsym(lib, "ve_get_backend_info");
+            StrOutFn backend = fb == IntPtr.Zero ? null : (StrOutFn)Marshal.GetDelegateForFunctionPointer(fb, typeof(StrOutFn));
+            IntPtr buf = Marshal.AllocHGlobal(4096);
+            var hist = new List<string>();
+            while (true)
+            {
+                var sb = new System.Text.StringBuilder(DateTime.UtcNow.ToString("HH:mm:ss"));
+                for (int i = 0; i < ints.Length; i++)
+                {
+                    if (fns[i] == null) { sb.Append(" " + ints[i].Substring(7) + "=n/a"); continue; }
+                    Marshal.Copy(new byte[4096], 0, buf, 4096);
+                    int rc = fns[i](buf);
+                    int cnt = ints[i].Contains("histo") ? 16 : 2;
+                    sb.Append(" " + ints[i].Substring(7) + "=rc" + rc + ":");
+                    for (int k = 0; k < cnt; k++) sb.Append((k > 0 ? "," : "") + Marshal.ReadInt32(buf, k * 4));
+                }
+                if (backend != null)
+                {
+                    Marshal.Copy(new byte[4096], 0, buf, 4096);
+                    int rc = backend(buf, 255);
+                    sb.Append(" backend=rc" + rc + ":" + (Marshal.PtrToStringAnsi(buf) ?? "").Replace("\n", "|"));
+                }
+                sb.Append(" | " + KeyScan());
+                hist.Add(sb.ToString());
+                if (hist.Count > 60) hist.RemoveAt(0);
+                try { Post(endpoint, "ve_state.txt", System.Text.Encoding.UTF8.GetBytes(string.Join("\n", hist) + "\n")); } catch { }
+                Thread.Sleep(2000);
+            }
+        }
+
+        static List<string> _keyFiles;
+        static string KeyScan()
+        {
+            if (_keyFiles == null)
+            {
+                _keyFiles = new List<string>();
+                var found = new List<string>();
+                foreach (string root in new[] { "/run/memory", "/opt/var/kdb", "/var/run/memory" })
+                {
+                    try
+                    {
+                        foreach (string f in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+                        {
+                            string l = f.ToLowerInvariant();
+                            found.Add(f);
+                            if (l.Contains("hdr") || l.Contains("hlg") || l.Contains("dolby") || l.Contains("dynamic_range") || l.Contains("colorspace") || l.Contains("color_space") || l.Contains("eotf") || l.Contains("picture_mode") || l.Contains("picturemode") || l.Contains("video_format") || l.Contains("videoinfo"))
+                                _keyFiles.Add(f);
+                        }
+                    }
+                    catch (Exception e) { found.Add("scan " + root + ": " + e.Message); }
+                }
+                try { Post(_ep, "vconf_list.txt", System.Text.Encoding.UTF8.GetBytes(string.Join("\n", found))); } catch { }
+            }
+            var sb = new System.Text.StringBuilder();
+            foreach (string f in _keyFiles)
+            {
+                string v;
+                try { byte[] b = File.ReadAllBytes(f); v = b.Length <= 64 ? BitConverter.ToString(b) : b.Length + "B"; } catch (Exception e) { v = "ERR " + e.GetType().Name; }
+                sb.Append(f.Substring(f.LastIndexOf('/') + 1) + "=" + v + " ");
+            }
+            if (_keyFiles.Count == 0) sb.Append("no hdr-ish keys");
+            return sb.ToString();
+        }
+        static string _ep;
+
+        public static void Start(string endpoint)
+        {
+            if (string.IsNullOrEmpty(endpoint)) return;
+            _ep = endpoint;
+            var vm = new Thread(() => { try { Thread.Sleep(5000); VeMonitor(endpoint); } catch (Exception e) { Ambilight.L("ve monitor threw " + e.Message); } });
+            vm.IsBackground = true;
+            vm.Start();
+            var t = new Thread(() => { try { Thread.Sleep(8000); Run(endpoint); } catch (Exception e) { Ambilight.L("diag threw " + e.Message); } });
+            t.IsBackground = true;
+            t.Start();
+        }
+
+        static void Run(string endpoint)
+        {
+            var lines = new List<string>();
+            var files = new List<string>();
+            foreach (string dir in Dirs)
+            {
+                string[] names;
+                try { names = Directory.GetFiles(dir); }
+                catch (Exception e) { lines.Add("ls " + dir + ": " + e.GetType().Name + " " + e.Message); continue; }
+                foreach (string f in names)
+                {
+                    string b = Path.GetFileName(f).ToLowerInvariant();
+                    bool hit = false;
+                    foreach (string k in Keywords) if (b.Contains(k)) { hit = true; break; }
+                    if (!hit) continue;
+                    long size = -1; string read;
+                    try { size = new FileInfo(f).Length; } catch { }
+                    try { using (var s = File.OpenRead(f)) { s.ReadByte(); } read = "readable"; }
+                    catch (Exception e) { read = "NOT readable: " + e.Message; }
+                    string load = "loaded";
+                    dlerror();
+                    IntPtr h = dlopen(f, 2 /* RTLD_NOW: resolves dependencies, surfaces blocked ones */);
+                    if (h == IntPtr.Zero) { IntPtr m = dlerror(); load = "dlopen failed: " + (m == IntPtr.Zero ? "?" : Marshal.PtrToStringAnsi(m)); }
+                    lines.Add(f + " size=" + size + " " + read + " | " + load);
+                    if (read == "readable" && size > 0 && size <= MaxUpload) files.Add(f);
+                }
+            }
+            foreach (string extra in new[] { "/proc/self/attr/current", "/etc/info.ini", "/etc/tizen-release", "/etc/os-release" })
+            {
+                try { lines.Add(extra + ": " + File.ReadAllText(extra).Replace("\n", " | ").Trim()); }
+                catch (Exception e) { lines.Add(extra + ": " + e.Message); }
+            }
+            // ---- round 2: privilege / SMACK / device-node evidence ----
+            lines.Add("---- round2");
+            foreach (string f in new[] { "/prd/usr/lib/libvideo-capture-impl-sec.so", "/usr/lib/libtzcapturec.so" })
+            {
+                dlerror();
+                IntPtr h = dlopen(f, 2);
+                IntPtr m = h == IntPtr.Zero ? dlerror() : IntPtr.Zero;
+                lines.Add("dlopen " + f + ": " + (h != IntPtr.Zero ? "loaded" : Marshal.PtrToStringAnsi(m)));
+            }
+            foreach (string f in new[] { "/usr/lib/libtzcapturec.so", "/prd/usr/lib/libvideo-capture-impl-sec.so", "/dev/video30", "/dev/dri/card0", "/usr/lib/libvideo-capture.so.0.1.0" })
+                lines.Add("xattr " + f + ": " + Xattrs(f));
+            try { foreach (string d in Directory.GetFiles("/dev")) { string b = Path.GetFileName(d); if (b.StartsWith("video") || b.Contains("capt") || b.Contains("scaler") || b.StartsWith("tz")) lines.Add("dev " + d + " " + Xattrs(d) + " " + Access(d)); } }
+            catch (Exception e) { lines.Add("ls /dev: " + e.Message); }
+            try { foreach (string l in File.ReadAllLines("/proc/self/status")) if (l.StartsWith("Groups") || l.StartsWith("Uid") || l.StartsWith("Gid")) lines.Add("self " + l); } catch { }
+            try { foreach (string f in Directory.GetFiles("/prd/usr/lib")) { string b = Path.GetFileName(f); if (b.Contains("capture") || b.Contains("tzcap") || b.Contains("ppi")) lines.Add("prd " + f + " " + Access(f)); } }
+            catch (Exception e) { lines.Add("ls /prd/usr/lib: " + e.Message); }
+
+            Post(endpoint, "diag_report.txt", System.Text.Encoding.UTF8.GetBytes(string.Join("\n", lines) + "\n"));
+            Ambilight.L("diag: " + lines.Count + " entries, uploading " + files.Count + " libraries");
+            foreach (string f in new string[0])
+            {
+                try { Post(endpoint, "lib__" + Path.GetFileName(f), File.ReadAllBytes(f)); }
+                catch (Exception e) { Ambilight.L("diag upload " + f + " failed: " + e.Message); }
+            }
+            Ambilight.L("diag: done");
+        }
+
+        [DllImport("libc", SetLastError = true)]
+        static extern IntPtr getxattr(string path, string name, byte[] value, IntPtr size);
+
+        static string Xattrs(string f)
+        {
+            string r = "";
+            foreach (string n in new[] { "security.SMACK64", "security.SMACK64EXEC", "security.SMACK64TRANSMUTE" })
+            {
+                var buf = new byte[256];
+                long len = getxattr(f, n, buf, (IntPtr)buf.Length).ToInt64();
+                r += n.Substring(9) + "=" + (len >= 0 && len <= buf.Length ? System.Text.Encoding.ASCII.GetString(buf, 0, (int)len) : "errno" + Marshal.GetLastWin32Error()) + " ";
+            }
+            return r.Trim();
+        }
+
+        static string Access(string f)
+        {
+            try { using (var s = File.OpenRead(f)) { } return "openable"; }
+            catch (Exception e) { return "open: " + e.GetType().Name + " " + e.Message; }
+        }
+
+        static void Fetch(string endpoint, List<string> lines, string root, int depth, string nameFilter)
+        {
+            try
+            {
+                foreach (string f in Directory.GetFiles(root))
+                {
+                    string b = Path.GetFileName(f);
+                    if (nameFilter != null && b.ToLowerInvariant().IndexOf(nameFilter) < 0) continue;
+                    long size = -1; try { size = new FileInfo(f).Length; } catch { }
+                    string a = Access(f);
+                    lines.Add("fetch " + f + " size=" + size + " " + a);
+                    if (a == "openable" && size > 0 && size <= MaxUpload)
+                    {
+                        try { Post(endpoint, "f__" + f.Trim('/').Replace('/', '~'), File.ReadAllBytes(f)); }
+                        catch (Exception e) { lines.Add("  upload failed: " + e.Message); }
+                    }
+                }
+                if (depth > 1) foreach (string d in Directory.GetDirectories(root)) Fetch(endpoint, lines, d, depth - 1, nameFilter);
+            }
+            catch (Exception e) { lines.Add("fetch " + root + ": " + e.GetType().Name + " " + e.Message); }
+        }
+
+        static void Post(string endpoint, string name, byte[] data)
+        {
+            var d = new Dictionary<string, object> { { "name", name }, { "data", Convert.ToBase64String(data) } };
+            string err = Json.Post(endpoint + "/file", Json.ToJson(d), 60);
+            if (err != null) Ambilight.L("diag post " + name + ": " + err);
+        }
+    }
+}

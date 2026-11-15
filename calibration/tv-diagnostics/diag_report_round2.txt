@@ -1,0 +1,170 @@
+/usr/lib/libaudio-capture.so size=21 readable | loaded
+/usr/lib/libaudio-capture.so.0 size=23 readable | loaded
+/usr/lib/libaudio-capture.so.0.1 size=9612 readable | loaded
+/usr/lib/libcapi-audio-capture.so size=26 readable | loaded
+/usr/lib/libcapi-audio-capture.so.0 size=28 readable | loaded
+/usr/lib/libcapi-audio-capture.so.0.1 size=5496 readable | loaded
+/usr/lib/libcapi-rm-video-capture.so size=29 readable | loaded
+/usr/lib/libcapi-rm-video-capture.so.0 size=33 readable | loaded
+/usr/lib/libcapi-rm-video-capture.so.0.0.1 size=13716 readable | loaded
+/usr/lib/libcapi-video-capture.so size=26 readable | loaded
+/usr/lib/libcapi-video-capture.so.0 size=30 readable | loaded
+/usr/lib/libcapi-video-capture.so.0.1.0 size=13800 readable | loaded
+/usr/lib/libdisplay-capture-api.so.0 size=29 readable | loaded
+/usr/lib/libdisplay-capture-api.so.0.0 size=30348 readable | loaded
+/usr/lib/libds-tizen-scaler.so.0 size=27 readable | loaded
+/usr/lib/libds-tizen-scaler.so.0.1.2 size=11892 readable | loaded
+/usr/lib/libep-common-screencapture.so size=17936 readable | dlopen failed: /usr/lib/libep-common-screencapture.so: undefined symbol: _ZN11ep_fileutil15CreateDirectoryEPKc
+/usr/lib/libkeystone-ppi.so size=20 readable | loaded
+/usr/lib/libkeystone-ppi.so.0 size=22 readable | loaded
+/usr/lib/libkeystone-ppi.so.0.1 size=56960 readable | loaded
+/usr/lib/libppi-acm-core-acmd.so size=25 readable | loaded
+/usr/lib/libppi-acm-core-acmd.so.0 size=27 readable | loaded
+/usr/lib/libppi-acm-core-acmd.so.0.1 size=7236 readable | loaded
+/usr/lib/libppi-npu-control.so size=23 readable | loaded
+/usr/lib/libppi-npu-control.so.0 size=25 readable | loaded
+/usr/lib/libppi-npu-control.so.0.1 size=5456 readable | loaded
+/usr/lib/libppi_wrapper.so size=5368 readable | loaded
+/usr/lib/libscaler-client.so.0 size=25 readable | loaded
+/usr/lib/libscaler-client.so.0.0.0 size=5272 readable | loaded
+/usr/lib/libscaler-server.so.0 size=25 readable | loaded
+/usr/lib/libscaler-server.so.0.0.0 size=6808 readable | loaded
+/usr/lib/libtzcapturec.so size=17784 NOT readable: Access to the path '/usr/lib/libtzcapturec.so' is denied. | dlopen failed: /usr/lib/libtzcapturec.so: cannot open shared object file: Operation not permitted
+/usr/lib/libvideo-capture.so.0 size=25 readable | loaded
+/usr/lib/libvideo-capture.so.0.1.0 size=19916 readable | loaded
+/usr/lib/libvideo-dp-control-c-glue.so.0 size=33 readable | loaded
+/usr/lib/libvideo-dp-control-c-glue.so.0.1 size=5324 readable | loaded
+/usr/lib/libvideo-dp-control.so.0 size=28 readable | loaded
+/usr/lib/libvideo-dp-control.so.0.1.0 size=15996 readable | loaded
+/usr/lib/libvideoenhance.so size=20 readable | loaded
+/usr/lib/libvideoenhance.so.0 size=22 readable | loaded
+/usr/lib/libvideoenhance.so.0.1 size=78428 readable | loaded
+/usr/lib/tzcapture.manifest size=84 readable | dlopen failed: /usr/lib/tzcapture.manifest: invalid ELF header
+/lib/libaudio-capture.so size=21 readable | loaded
+/lib/libaudio-capture.so.0 size=23 readable | loaded
+/lib/libaudio-capture.so.0.1 size=9612 readable | loaded
+/lib/libcapi-audio-capture.so size=26 readable | loaded
+/lib/libcapi-audio-capture.so.0 size=28 readable | loaded
+/lib/libcapi-audio-capture.so.0.1 size=5496 readable | loaded
+/lib/libcapi-rm-video-capture.so size=29 readable | loaded
+/lib/libcapi-rm-video-capture.so.0 size=33 readable | loaded
+/lib/libcapi-rm-video-capture.so.0.0.1 size=13716 readable | loaded
+/lib/libcapi-video-capture.so size=26 readable | loaded
+/lib/libcapi-video-capture.so.0 size=30 readable | loaded
+/lib/libcapi-video-capture.so.0.1.0 size=13800 readable | loaded
+/lib/libdisplay-capture-api.so.0 size=29 readable | loaded
+/lib/libdisplay-capture-api.so.0.0 size=30348 readable | loaded
+/lib/libds-tizen-scaler.so.0 size=27 readable | loaded
+/lib/libds-tizen-scaler.so.0.1.2 size=11892 readable | loaded
+/lib/libep-common-screencapture.so size=17936 readable | dlopen failed: /lib/libep-common-screencapture.so: undefined symbol: _ZN11ep_fileutil15CreateDirectoryEPKc
+/lib/libkeystone-ppi.so size=20 readable | loaded
+/lib/libkeystone-ppi.so.0 size=22 readable | loaded
+/lib/libkeystone-ppi.so.0.1 size=56960 readable | loaded
+/lib/libppi-acm-core-acmd.so size=25 readable | loaded
+/lib/libppi-acm-core-acmd.so.0 size=27 readable | loaded
+/lib/libppi-acm-core-acmd.so.0.1 size=7236 readable | loaded
+/lib/libppi-npu-control.so size=23 readable | loaded
+/lib/libppi-npu-control.so.0 size=25 readable | loaded
+/lib/libppi-npu-control.so.0.1 size=5456 readable | loaded
+/lib/libppi_wrapper.so size=5368 readable | loaded
+/lib/libscaler-client.so.0 size=25 readable | loaded
+/lib/libscaler-client.so.0.0.0 size=5272 readable | loaded
+/lib/libscaler-server.so.0 size=25 readable | loaded
+/lib/libscaler-server.so.0.0.0 size=6808 readable | loaded
+/lib/libtzcapturec.so size=17784 NOT readable: Access to the path '/lib/libtzcapturec.so' is denied. | dlopen failed: /lib/libtzcapturec.so: cannot open shared object file: Operation not permitted
+/lib/libvideo-capture.so.0 size=25 readable | loaded
+/lib/libvideo-capture.so.0.1.0 size=19916 readable | loaded
+/lib/libvideo-dp-control-c-glue.so.0 size=33 readable | loaded
+/lib/libvideo-dp-control-c-glue.so.0.1 size=5324 readable | loaded
+/lib/libvideo-dp-control.so.0 size=28 readable | loaded
+/lib/libvideo-dp-control.so.0.1.0 size=15996 readable | loaded
+/lib/libvideoenhance.so size=20 readable | loaded
+/lib/libvideoenhance.so.0 size=22 readable | loaded
+/lib/libvideoenhance.so.0.1 size=78428 readable | loaded
+/lib/tzcapture.manifest size=84 readable | dlopen failed: /lib/tzcapture.manifest: invalid ELF header
+/proc/self/attr/current: User::Pkg::dev.ritwickverma.TizenAmbilight
+/etc/info.ini: [Version] | Model=Tizen8/TV; | Build=latest; | Release=latest; | [Build] | Type=eng; | Date=20250620_163238; | Time=16:32:38; | Variant=NONE; | ID=latest; |
+/etc/tizen-release: Tizen8/TV 8.0.0 (arm) | VERSION = 8.0.0 | CODENAME = TSEVENDF | BUILD_ID=T-PTMCDEUC-0080-REL-202506210102 |
+/etc/os-release: NAME=Tizen | VERSION="8.0.0 (Tizen8/TV)" | ID=tizen | VERSION_ID=8.0.0 | PRETTY_NAME="Tizen 8.0.0 (Tizen8/TV)" | ANSI_COLOR="0;36" | CPE_NAME="cpe:/o:tizen:tizen:8.0.0" | BUILD_ID=T-PTMCDEUC-0080-REL-202506210102 |
+---- round2
+dlopen /prd/usr/lib/libvideo-capture-impl-sec.so: libtzcapturec.so: cannot open shared object file: Operation not permitted
+dlopen /usr/lib/libtzcapturec.so: /usr/lib/libtzcapturec.so: cannot open shared object file: Operation not permitted
+xattr /usr/lib/libtzcapturec.so: SMACK64=_ SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /prd/usr/lib/libvideo-capture-impl-sec.so: SMACK64=_ SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /dev/video30: SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /dev/dri/card0: SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+xattr /usr/lib/libvideo-capture.so.0.1.0: SMACK64=_ SMACK64EXEC=errno61 SMACK64TRANSMUTE=
+dev /dev/video51 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video50 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tztv_frc_ew SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tztv_tcon SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tztv_frc SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video28 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video63 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video62 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video61 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video60 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video33 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video32 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video31 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video30 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video40 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video22 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video21 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video14 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video13 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video12 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video11 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video10 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video24 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/video20 SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tzlog SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzlog' is denied.
+dev /dev/tzrsrc SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzrsrc' is denied.
+dev /dev/tzmem SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= openable
+dev /dev/tzdev_invoke SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzdev_invoke' is denied.
+dev /dev/tzdev SMACK64=* SMACK64EXEC=errno61 SMACK64TRANSMUTE= open: UnauthorizedAccessException Access to the path '/dev/tzdev' is denied.
+self Uid:	5001	5001	5001	5001
+self Gid:	100	100	100	100
+self Groups:	29 44 100 201 6509 10704 10705 
+prd /prd/usr/lib/libaudio-capture-impl-sec.so openable
+prd /prd/usr/lib/libaudio-capture-impl-sec.so.0 openable
+prd /prd/usr/lib/libaudio-capture-impl-sec.so.0.1 openable
+prd /prd/usr/lib/libaudio-capture-impl.so openable
+prd /prd/usr/lib/libvideo-capture-impl-sec.so openable
+prd /prd/usr/lib/libvideo-capture-impl-sec.so.0 openable
+prd /prd/usr/lib/libvideo-capture-impl-sec.so.0.1.0 openable
+fetch /usr/share/security-manager/.security-manager.db size=176128 openable
+fetch /usr/share/security-manager/.security-manager.db-journal size=62072 open: UnauthorizedAccessException Access to the path '/usr/share/security-manager/.security-manager.db-journal' is denied.
+fetch /usr/share/security-manager/dummy: UnauthorizedAccessException Access to the path '/usr/share/security-manager/dummy' is denied.
+fetch /usr/share/security-manager/policy/app-rules-template.smack size=387 openable
+fetch /usr/share/security-manager/policy/author-rules-template.smack size=94 openable
+fetch /usr/share/security-manager/policy/group-id.list size=237 openable
+fetch /usr/share/security-manager/policy/pkg-rules-template.smack size=158 openable
+fetch /usr/share/security-manager/policy/privilege-group.list size=1409 openable
+fetch /usr/share/security-manager/policy/privilege-managed-by-systemd-for-daemons.list size=878 openable
+fetch /usr/share/security-manager/policy/privilege-mount.list size=1 openable
+fetch /usr/share/security-manager/policy/privilege-smack.list size=1 openable
+fetch /usr/share/security-manager/policy/update.sh size=1613 openable
+fetch /usr/share/security-manager/policy/update_group_id_list.sh size=1617 openable
+fetch /usr/share/security-manager/policy/usertype-admin.profile size=10959 openable
+fetch /usr/share/security-manager/policy/usertype-admin.profile-change-privilege size=2 openable
+fetch /usr/share/security-manager/policy/usertype-admin.profile-timestamp size=59 openable
+fetch /usr/share/security-manager/policy/usertype-guest.profile size=7124 openable
+fetch /usr/share/security-manager/policy/usertype-normal.profile size=7125 openable
+fetch /usr/share/security-manager/policy/usertype-security.profile size=7127 openable
+fetch /usr/share/security-manager/policy/usertype-system.profile size=7125 openable
+fetch /usr/share/security-manager/policy/privilege-mapping/priv-rules-default-template.smack size=48 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v1.sh size=1686 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v2.sh size=1155 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v3.sh size=3749 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v4.sh size=2798 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v5.sh size=2193 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v6.sh size=3124 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v7.sh size=2145 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v8.sh size=2383 openable
+fetch /usr/share/security-manager/policy/updates/update-policy-to-v9.sh size=2591 openable
+fetch /usr/share/privilege-manager/.privilege.db size=151552 openable
+fetch /usr/share/privilege-manager/.privilege.db-journal size=29240 openable
+fetch /usr/share/privilege-manager/policy_db_updater.sh size=1373 open: UnauthorizedAccessException Access to the path '/usr/share/privilege-manager/policy_db_updater.sh' is denied.
+fetch /usr/share/dotnet.tizen/framework/Tizen.TV.System.ContentAnalysis.dll size=40960 openable
+fetch /usr/share/dotnet.tizen/framework/Tizen.TV.System.ContentAnalysis.ni.dll size=94208 openable
