@@ -78,6 +78,7 @@ then copy the values into `config.json`.
 | `whiteMix` | `1` | share of each colour's white part moved to the white LED |
 | `whiteGain` | `1` | white LED output relative to full RGB white (W is sent as moved / whiteGain) |
 | `whiteTintR` / `G` / `B` | `0.2` / `-0.1` / `0.8` | per unit of W: red removed, green removed (negative adds), blue added; cancels a warm white LED |
+| `hdrWhiteTintR` / `G` / `B` | = `whiteTint*` | the same, used while the content is HDR (the TV's HDR picture mode may render white cooler) |
 | **Motion** | | |
 | `alpha` | `0.25` | EMA smoothing for small changes (lower = smoother) |
 | `alphaFast` / `alphaCut` | `0.75` / `18` | faster smoothing used when the frame delta exceeds `alphaCut` (scene cuts) |
@@ -142,6 +143,7 @@ string-valued token is dropped silently. NaN and Infinity are rejected explicitl
 | `cg` / `gx` / `xr` / `xg` / `xb` | 1–3 / 0–1 / 0.2–2 each | `chromaGamma` / `greenToRed` / `chromaGainR/G/B` |
 | `dd` / `dk` | 0–1 / 16–255 | `darkDesat` / `darkKnee` |
 | `rgbw` / `wm` / `wgn` / `wtr` / `wtg` / `wtb` | 0/1 / 0–1 / 0.2–4 / −1–1 each | `wledRgbw` / `whiteMix` / `whiteGain` / `whiteTintR/G/B` |
+| `hwtr` / `hwtg` / `hwtb` | −1–1 each | `hdrWhiteTintR/G/B` |
 | `spatial` / `punch` / `floor` | 0–1 / 0–1 / 0–255 | ambience |
 | `stale` / `stalevel` | 0–600000 ms / 0–1 | stale-picture fade |
 | `bars` / `brows` / `bthr` | 0/1 / 0/1 / 4–80 | black-bar detection |

@@ -188,14 +188,20 @@ namespace TizenAmbilight
         /// adds blue (tokens <c>wtr</c>/<c>wtg</c>/<c>wtb</c>, config <c>whiteTintR/G/B</c>). A warm W LED
         /// needs red &gt; 0 and blue &gt; 0.</summary>
         public static float WhiteTintR = 0.2f, WhiteTintG = -0.1f, WhiteTintB = 0.8f;
+        /// <summary>The same correction while the content is HDR (tokens <c>hwtr</c>/<c>hwtg</c>/<c>hwtb</c>,
+        /// config <c>hdrWhiteTintR/G/B</c>). The S90C renders white cooler in its HDR picture mode, so the
+        /// strip's white needs more blue there to match. <see cref="HdrActive"/> picks the set per frame.</summary>
+        public static float HdrWhiteTintR = 0.2f, HdrWhiteTintG = -0.1f, HdrWhiteTintB = 0.8f;
+        public static volatile bool HdrActive;
 
         static void EmitRgbw(byte[] p, int o, int r, int g, int b)
         {
             int m = r < g ? (r < b ? r : b) : (g < b ? g : b);
             float moved = m * WhiteMix;
-            float fr = r - moved - WhiteTintR * moved;
-            float fg = g - moved - WhiteTintG * moved;
-            float fb = b - moved + WhiteTintB * moved;
+            bool h = HdrActive;
+            float fr = r - moved - (h ? HdrWhiteTintR : WhiteTintR) * moved;
+            float fg = g - moved - (h ? HdrWhiteTintG : WhiteTintG) * moved;
+            float fb = b - moved + (h ? HdrWhiteTintB : WhiteTintB) * moved;
             float w = WhiteGain > 0.05f ? moved / WhiteGain : moved;
             p[o]     = Byte(fr);
             p[o + 1] = Byte(fg);

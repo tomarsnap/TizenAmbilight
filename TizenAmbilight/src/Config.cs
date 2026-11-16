@@ -307,6 +307,9 @@ namespace TizenAmbilight
             WledOutput.WhiteTintR = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("whiteTintR", 0.2)));
             WledOutput.WhiteTintG = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("whiteTintG", -0.1)));
             WledOutput.WhiteTintB = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("whiteTintB", 0.8)));
+            WledOutput.HdrWhiteTintR = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("hdrWhiteTintR", WledOutput.WhiteTintR)));
+            WledOutput.HdrWhiteTintG = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("hdrWhiteTintG", WledOutput.WhiteTintG)));
+            WledOutput.HdrWhiteTintB = (float)Math.Max(-1.0, Math.Min(1.0, PrefDouble("hdrWhiteTintB", WledOutput.WhiteTintB)));
             WledOutput.DarkDesat = (float)Math.Max(0.0, Math.Min(1.0, PrefDouble("darkDesat", 0.4)));
             WledOutput.DarkKnee = (float)Math.Max(16.0, Math.Min(255.0, PrefDouble("darkKnee", 160)));
             WledOutput.ChromaR = (float)Math.Max(0.2, Math.Min(2.0, PrefDouble("chromaGainR", 1.0)));

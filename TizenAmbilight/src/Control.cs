@@ -63,6 +63,9 @@ namespace TizenAmbilight
                     case "rgbw": if (dv == 0 || dv == 1) WledOutput.Rgbw = dv != 0; break;
                     case "wm": if (dv >= 0.0 && dv <= 1.0) WledOutput.WhiteMix = (float)dv; break;
                     case "wgn": if (dv >= 0.2 && dv <= 4.0) WledOutput.WhiteGain = (float)dv; break;
+                    case "hwtr": if (dv >= -1.0 && dv <= 1.0) WledOutput.HdrWhiteTintR = (float)dv; break;
+                    case "hwtg": if (dv >= -1.0 && dv <= 1.0) WledOutput.HdrWhiteTintG = (float)dv; break;
+                    case "hwtb": if (dv >= -1.0 && dv <= 1.0) WledOutput.HdrWhiteTintB = (float)dv; break;
                     case "wtr": if (dv >= -1.0 && dv <= 1.0) WledOutput.WhiteTintR = (float)dv; break;
                     case "wtg": if (dv >= -1.0 && dv <= 1.0) WledOutput.WhiteTintG = (float)dv; break;
                     case "wtb": if (dv >= -1.0 && dv <= 1.0) WledOutput.WhiteTintB = (float)dv; break;

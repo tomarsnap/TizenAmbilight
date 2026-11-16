@@ -189,6 +189,8 @@ It runs last (`WledOutput.BuildDrgbMapped`), in linear light, and applies to bot
 
 Method: `calibration/mkcard.py` test cards on the PC input (HDR off for SDR), the stale fade off
 (`stale=0`, or still cards dim and look wrong), and `calibration/knobs.py` sliders for live tokens.
+HDR has its own white-LED tint set (`hdrWhiteTint*`, defaults = the SDR values); the HDR whites card on
+the PC input looked right with them, so it is untuned headroom for now.
 WLED's own auto-white was 1 (Brighter) before 2026-11-16 and is now 0 (None); set it back to 1 if
 `wledRgbw` is turned off, or whites lose the white LED.
 

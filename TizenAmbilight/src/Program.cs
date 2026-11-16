@@ -711,6 +711,7 @@ namespace TizenAmbilight
                         SignalDetect.Observe(vr.Y, vr.YStride > 0 ? vr.YStride : vr.W, barTop, barBottom < 0 ? vr.H : barBottom,
                                              barLeft, barRight < 0 ? vr.W : barRight, Environment.TickCount64);
                         VideoPlaneCapture.InputLimited = SignalDetect.UseLimited;
+                        WledOutput.HdrActive = SignalDetect.UseHdr;
                         raw = layout.ExtractYuv(vr.Y, vr.C, vr.W, vr.H,
                                                 cfg.Saturation, cfg.WhiteR, cfg.WhiteG, cfg.WhiteB, SignalDetect.UseHdr, cfg.Gamut,
                                                 vr.YStride, vr.CStride, cfg.ZoneSample,
