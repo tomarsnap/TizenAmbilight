@@ -102,7 +102,6 @@ then copy the values into `config.json`.
 | `captureBackend` | `video_plane` | `video_plane`, `file` (legacy screenshot path) or `ppi` (force the DRM-fallback sampler; normally it engages by itself, see [DRM fallback](how-it-works.md#drm-fallback)) |
 | **DRM fallback** (only used while the plane is DRM-withheld, or with `captureBackend` `ppi`) | | |
 | `ppiZones` | `24` | spots measured round the screen edge, 4-73. More = finer picture, slower per-spot refresh (24 is about 4-5 Hz, 8 is about 12-15 Hz on the reference TV). Also in the Apps2Samsung form as an optional field. |
-| `ppiMedian` | `0` | `1` = each measured spot reports the median of its last 3 readings, so a single outlier read never reaches the strip, but every real change arrives one reading later (~150 ms at 12 spots). |
 | `ppiSettleMs` | `-1` | wait between arming a measure slot and reading it. `-1` = the settle time your TV reports. A lower value raises the rate only if reads stay fresh; check with `pfresh`. |
 | `requestWidth` / `requestHeight` / `compressType` / `jpegQuality` | `640` / `360` / `0` / `90` | legacy file backend only |
 
@@ -151,7 +150,6 @@ string-valued token is dropped silently. NaN and Infinity are rejected explicitl
 | `cw` / `ch` | 64–960 / 64–540 | video-plane request size |
 | `backend` | 0/1/2 | 0 = video plane (hands over to the fallback by itself on DRM), 1 = legacy file backend, 2 = force the DRM-fallback sampler |
 | `pz` / `psleep` / `ppibars` | 4-73 / -1-200 / 0/1 | DRM fallback: spots measured, settle ms (-1 = TV-reported), crop spots to the picture when letterboxed |
-| `pmed` | 0/1 | DRM fallback: per-spot median-of-3 outlier filter (`ppiMedian`) |
 | `ppigrid` / `pfresh` | 1 / 1 or 2 | DRM fallback diagnostics, read-only: 32x18 thumbnail into telemetry; freshness test at several settle times |
 | `zhex` | 0/1 | report every zone in telemetry |
 | `dump` | 1 | send the next frame's raw planes to the collector |

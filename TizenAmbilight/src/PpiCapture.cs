@@ -259,20 +259,8 @@ namespace TizenAmbilight
         // sampler-owned except where noted; _mz/_val/_have/_pz are replaced/updated under _lock
         static int[] _mz;                         // zone index of each measured position
         static int[] _mpx, _mpy;
-        static int[] _val;                        // pz*3 raw 10-bit (the filtered value the render loop uses)
+        static int[] _val;                        // pz*3 raw 10-bit
         static bool[] _have;
-        // ---- per-spot outlier filter. A spot occasionally returns one reading far off the picture (seen on a
-        // static S90C screen: blue 234 for one reading against ~25 either side). Interpolation spreads a spot
-        // over ~25 LEDs and the per-zone snap follows a big jump at once, so one bad reading flashed a third
-        // of a side for ~150 ms. With the filter on, each spot reports the median (by R+G+B) of its last 3
-        // readings: a single outlier never reaches the strip, and a real change lands one reading later.
-        // Off by default: the extra reading of delay (~150 ms at 12 spots) felt laggy on the S90C.
-        // Config ppiMedian 0/1 (default 0), token pmed=0/1. Sampler-owned. ----
-        public static volatile bool MedianEnabled = false;
-        const int Hist = 3;
-        static int[] _hist;                       // pz*Hist*3 latest raw readings, ring per spot
-        static int[] _histN;                      // readings stored per spot (0..Hist)
-        static int[] _histPos;                    // next ring slot per spot
         static int _cur;
         // render-thread scratch for Snapshot (reused, grown only if pz grows)
         static int[] _snapZ, _snapV;
@@ -348,12 +336,6 @@ namespace TizenAmbilight
                     _cur = 0;
                 }
                 _pz = pz;
-                // positions may have moved (resize or new active rectangle): old readings belong elsewhere
-                if (_hist == null || _hist.Length != pz * Hist * 3)
-                {
-                    _hist = new int[pz * Hist * 3]; _histN = new int[pz]; _histPos = new int[pz];
-                }
-                else { Array.Clear(_histN, 0, pz); Array.Clear(_histPos, 0, pz); }
                 for (int k = 0; k < pz; k++)
                 {
                     int z = (int)Math.Round(k * (double)_zones / pz);
@@ -389,7 +371,6 @@ namespace TizenAmbilight
                 if (ReadPix(k, out rr, out gg, out bb, out lag) != 0) continue;
                 if (lag < _lagMin) _lagMin = lag;
                 if (lag > _lagMax) _lagMax = lag;
-                Filter((i0 + k) % pz, ref rr, ref gg, ref bb);
                 lock (_lock)
                 {
                     int m = (i0 + k) % pz;
@@ -400,25 +381,6 @@ namespace TizenAmbilight
             }
             Interlocked.Increment(ref Cycles);
             _cur = (i0 + armed) % pz;
-        }
-
-        /// <summary>Store a reading in spot m's history and replace it with the median reading (by R+G+B) of
-        /// the last <see cref="Hist"/>. Fewer than Hist readings so far (start-up, after a geometry change):
-        /// the reading passes through unchanged. A whole reading is chosen, never a per-channel mix, so the
-        /// output is always a colour the TV actually measured.</summary>
-        static void Filter(int m, ref int r, ref int g, ref int b)
-        {
-            int o = m * Hist * 3, p = _histPos[m];
-            _hist[o + p * 3] = r; _hist[o + p * 3 + 1] = g; _hist[o + p * 3 + 2] = b;
-            _histPos[m] = (p + 1) % Hist;
-            if (_histN[m] < Hist) _histN[m]++;
-            if (!MedianEnabled || _histN[m] < Hist) return;
-            int s0 = _hist[o] + _hist[o + 1] + _hist[o + 2];
-            int s1 = _hist[o + 3] + _hist[o + 4] + _hist[o + 5];
-            int s2 = _hist[o + 6] + _hist[o + 7] + _hist[o + 8];
-            int pick = (s0 <= s1) ? (s1 <= s2 ? 1 : (s0 <= s2 ? 2 : 0))
-                                  : (s0 <= s2 ? 0 : (s1 <= s2 ? 2 : 1));
-            r = _hist[o + pick * 3]; g = _hist[o + pick * 3 + 1]; b = _hist[o + pick * 3 + 2];
         }
 
         /// <summary>Latest measurements interpolated linearly round the ring onto every zone (8-bit =
@@ -876,7 +838,6 @@ namespace TizenAmbilight
                 { "cond_extra", CondExtra6 + "," + CondExtra7 },
                 { "thread_sleep1_ms", Math.Round(Sleep1Ms, 2) },
                 { "settle_used_ms", (long)EffectiveSleepMs },
-                { "median", MedianEnabled },
                 { "pz", (long)pz },
                 { "samples_total", samples },
                 { "samples_per_s_window", Math.Round(sps, 1) },
